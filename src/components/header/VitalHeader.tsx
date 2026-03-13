@@ -14,19 +14,28 @@ export default function VitalHeader() {
   });
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[15vh] z-50 flex items-center justify-between px-6 parchment-card border-b-2 border-sepia-mid">
+    <header className="fixed top-0 left-0 right-0 h-[12vh] z-50 flex items-center justify-between px-8 bg-white border-b-4 border-black">
       <div className="flex flex-col">
-        <h1 className="text-xl font-bold leading-tight truncate max-w-[150px]">
+        <h1 className="text-4xl font-extrabold tracking-tight text-black uppercase">
           {character.name}
         </h1>
-        <span className="text-xs italic text-sepia-mid">
-          {character.ancestry} {character.className}
-        </span>
+        <div className="flex gap-2 text-sm font-bold text-gray-700 mt-1">
+          <span>{character.rank}</span>
+          <span>Male</span>
+          <span>{character.ancestry},</span>
+          <span>{character.className} game warden</span>
+        </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        <PenaltyBadge penalty={penalty} />
+      <div className="flex items-center gap-8">
+        <div className="flex flex-col items-center">
+           <PenaltyBadge penalty={penalty} />
+        </div>
         <BenniePool count={character.bennies} />
+        {/* Mock Pathfinder/Savage Worlds Logos would go here */}
+        <div className="hidden md:block w-32 h-12 bg-gray-200 border border-gray-400 flex items-center justify-center text-[0.6rem] font-bold text-gray-500 uppercase">
+          Logo Placeholder
+        </div>
       </div>
     </header>
   );

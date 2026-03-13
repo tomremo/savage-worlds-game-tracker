@@ -9,19 +9,19 @@ export default function StatusGrid() {
   const toggleStatus = useCharacterStore((state) => state.toggleStatus);
 
   return (
-    <div className="space-y-2">
-      <span className="text-xs font-bold uppercase text-sepia-dark">Status Conditions</span>
-      <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-1">
+      <span className="text-[0.65rem] font-bold uppercase">Status Conditions</span>
+      <div className="grid grid-cols-3 gap-1">
         {STATUSES.map((status) => {
           const isActive = currentStatuses.includes(status);
           return (
             <button
               key={status}
               onClick={() => toggleStatus(status)}
-              className={`py-2 px-1 text-[10px] rounded border font-bold uppercase transition-all ${
+              className={`py-1 px-0.5 text-[0.6rem] border border-black font-bold uppercase transition-all ${
                 isActive
-                  ? 'bg-accent-red border-sepia-dark text-white shadow-md transform scale-95'
-                  : 'bg-sepia-light/20 border-sepia-light text-sepia-mid'
+                  ? 'bg-black text-white'
+                  : 'bg-gray-100 text-gray-400'
               }`}
             >
               {status}

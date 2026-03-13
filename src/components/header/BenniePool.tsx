@@ -12,16 +12,16 @@ export default function BenniePool({ count }: { count: number }) {
         {Array.from({ length: Math.max(0, count) }).map((_, i) => (
           <div
             key={i}
-            className="w-8 h-8 rounded-full bg-accent-red border-2 border-sepia-dark shadow-md flex items-center justify-center text-white text-[10px] font-bold cursor-pointer active:scale-90 transition-transform"
+            className="w-7 h-7 rounded-full bg-red-600 border border-black shadow flex items-center justify-center text-white text-[10px] font-bold cursor-pointer active:scale-95 transition-transform"
           >
             B
           </div>
         ))}
-        {count === 0 && <span className="text-[10px] uppercase font-bold text-accent-red">No Bennies</span>}
+        {count === 0 && <span className="text-[10px] uppercase font-bold text-red-600">No Bennies</span>}
       </div>
       <button 
         onClick={(e) => { e.stopPropagation(); addBennie(); }}
-        className="mt-1 text-[10px] uppercase font-bold text-sepia-dark underline hover:text-accent-red"
+        className="mt-0.5 text-[8px] uppercase font-bold text-black border border-black px-1 leading-none h-4 hover:bg-black hover:text-white transition-colors"
       >
         Add Bennie
       </button>

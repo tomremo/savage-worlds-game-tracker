@@ -6,6 +6,7 @@ export interface TraitRollRequest {
 }
 
 export interface DieResult {
+  sides: number;
   initial: number;
   total: number;
   aces: number;
@@ -39,7 +40,7 @@ const rollAcingDie = (sides: number): DieResult => {
   const total = rolls.reduce((sum, r) => sum + r, 0);
   const aces = rolls.length - 1;
   
-  return { initial, total, aces, rolls };
+  return { sides, initial, total, aces, rolls };
 };
 
 export const rollTrait = (request: TraitRollRequest, includeWildDie: boolean = false): TraitRollResult => {

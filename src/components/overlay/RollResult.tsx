@@ -3,6 +3,7 @@
 import { useUIStore } from '@/stores/uiStore';
 import { useCharacterStore } from '@/stores/characterStore';
 import { calculateGlobalPenalty } from '@/engine/penalties';
+import DieIcon from '../core/DieIcon';
 
 export default function RollResult() {
   const { rollOverlayVisible, activeRollResult, setRollOverlayVisible } = useUIStore();
@@ -22,59 +23,85 @@ export default function RollResult() {
   const raises = Math.floor((finalTotal - 4) / 4);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
       <div 
-        className="w-full max-w-sm parchment-card p-6 rounded-xl border-2 border-sepia-dark shadow-2xl space-y-4 transform transition-all scale-100"
+        className="w-full max-w-sm bg-white border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden transform transition-all scale-100"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-start">
-          <h2 className="text-2xl font-bold">{name} Roll</h2>
+        {/* Header */}
+        <div className="bg-black text-white px-4 py-2 flex justify-between items-center">
+          <h2 className="text-sm font-black uppercase tracking-widest">{name} Roll</h2>
           <button 
             onClick={() => setRollOverlayVisible(false)}
-            className="text-sepia-mid hover:text-accent-red text-xl font-bold"
+            className="hover:text-red-500 transition-colors text-xl font-black leading-none"
           >
-            ✕
+            ×
           </button>
         </div>
 
-        <div className="flex flex-col items-center justify-center py-6 bg-sepia-light/20 rounded-lg border border-sepia-light shadow-inner">
-          <span className={`text-6xl font-black ${result.isCriticalFailure ? 'text-accent-red animate-bounce' : 'text-sepia-dark'}`}>
-            {result.isCriticalFailure ? '!!' : finalTotal}
-          </span>
-          <span className="text-sm font-bold uppercase mt-2">
-            {result.isCriticalFailure ? 'Critical Failure' : isSuccess ? (raises > 0 ? `Success with ${raises} Raise${raises > 1 ? 's' : ''}` : 'Success') : 'Failure'}
-          </span>
+        {/* Main Result Display */}
+        <div className="p-8 flex flex-col items-center justify-center border-b-2 border-black bg-gray-50">
+          <div className="relative">
+            <span className={`text-8xl font-black leading-none ${result.isCriticalFailure ? 'text-red-600 animate-pulse' : 'text-black'}`}>
+              {result.isCriticalFailure ? '!!' : finalTotal}
+            </span>
+          </div>
+          
+          <div className={`mt-4 px-6 py-1 border-2 border-black font-black uppercase tracking-tighter text-xl ${
+            result.isCriticalFailure ? 'bg-red-600 text-white' : 
+            isSuccess ? 'bg-black text-white' : 'bg-white text-black'
+          }`}>
+            {result.isCriticalFailure ? 'Critical Failure' : 
+             isSuccess ? (raises > 0 ? `Success +${raises} Raise${raises > 1 ? 's' : ''}` : 'Success') : 
+             'Failure'}
+          </div>
         </div>
 
-        <div className="space-y-2 text-xs font-mono text-sepia-mid">
-          <div className="flex justify-between border-b border-sepia-light pb-1">
-            <span>Trait Die (d{result.traitDie.initial})</span>
-            <span>{result.traitDie.total} ({result.traitDie.rolls.join(' + ')})</span>
-          </div>
-          {result.wildDie && (
-            <div className="flex justify-between border-b border-sepia-light pb-1">
-              <span>Wild Die (d6)</span>
-              <span>{result.wildDie.total} ({result.wildDie.rolls.join(' + ')})</span>
+        {/* Breakdown */}
+        <div className="p-6 space-y-3 bg-white">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center pb-1 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <span className="text-[0.7rem] font-bold uppercase text-gray-500">Trait Die</span>
+                <DieIcon type={result.traitDie.sides as any} className="w-5 h-5 text-black" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-gray-400">({result.traitDie.rolls.join(' + ')})</span>
+                <span className="text-sm font-black">{result.traitDie.total}</span>
+              </div>
             </div>
-          )}
-          <div className="flex justify-between border-b border-sepia-light pb-1">
-            <span>Base Total (Higher)</span>
-            <span>{Math.max(result.traitDie.total, result.wildDie?.total || 0)}</span>
+
+            {result.wildDie && (
+              <div className="flex justify-between items-center pb-1 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.7rem] font-bold uppercase text-gray-500">Wild Die</span>
+                  <DieIcon type={result.wildDie.sides as any} className="w-5 h-5 text-black" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-gray-400">({result.wildDie.rolls.join(' + ')})</span>
+                  <span className="text-sm font-black">{result.wildDie.total}</span>
+                </div>
+              </div>
+            )}
+
+            {penalty !== 0 && (
+              <div className="flex justify-between items-center py-1">
+                <span className="text-[0.7rem] font-black uppercase text-red-600 italic">Global Penalty</span>
+                <span className="text-sm font-black text-red-600">{penalty > 0 ? `+${penalty}` : penalty}</span>
+              </div>
+            )}
           </div>
-          {penalty !== 0 && (
-            <div className="flex justify-between text-accent-red font-bold">
-              <span>Global Penalty</span>
-              <span>{penalty}</span>
-            </div>
-          )}
         </div>
 
-        <button 
-          onClick={() => setRollOverlayVisible(false)}
-          className="w-full py-3 bg-sepia-dark text-white font-bold rounded-lg hover:bg-sepia-mid transition-colors shadow-lg active:scale-95"
-        >
-          Close
-        </button>
+        {/* Footer Action */}
+        <div className="p-4 bg-gray-50 border-t-2 border-black">
+          <button 
+            onClick={() => setRollOverlayVisible(false)}
+            className="w-full py-4 bg-black text-white font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] active:translate-y-1 active:shadow-none"
+          >
+            Accept Result
+          </button>
+        </div>
       </div>
     </div>
   );

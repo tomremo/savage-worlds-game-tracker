@@ -6,14 +6,11 @@ import StatusGrid from './StatusGrid';
 
 export default function CombatState() {
   return (
-    <div className="parchment-card p-4 rounded-lg space-y-8">
-      <h2 className="text-lg font-bold mb-3 border-b border-sepia-mid pb-1">Combat State</h2>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <WoundTracker />
+    <div className="p-2 space-y-4">
+      <div className="grid grid-cols-2 divide-x divide-black border-b border-black pb-2">
         <FatigueTracker />
+        <WoundTracker />
       </div>
-
       <StatusGrid />
     </div>
   );

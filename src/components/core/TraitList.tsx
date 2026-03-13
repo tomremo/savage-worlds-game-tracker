@@ -13,16 +13,23 @@ export default function TraitList({ type, title }: { type: 'attributes' | 'skill
         name: id.charAt(0).toUpperCase() + id.slice(1),
         trait
       }))
-    : character.skills.map(s => ({
-        id: s.skillId,
-        name: skillDefinitions.find(sd => sd.id === s.skillId)?.name || s.skillId,
-        trait: s.trait
-      }));
+    : [
+        { 
+          id: 'unskilled', 
+          name: '(Unskilled)', 
+          trait: { dieType: 4, modifier: -2 } as any 
+        },
+        ...character.skills.map(s => ({
+          id: s.skillId,
+          name: skillDefinitions.find(sd => sd.id === s.skillId)?.name || s.skillId,
+          trait: s.trait
+        }))
+      ];
 
   return (
-    <div className="parchment-card p-4 rounded-lg">
-      <h2 className="text-lg font-bold mb-3 border-b border-sepia-mid pb-1">{title}</h2>
-      <div className="space-y-2">
+    <div className="section-container">
+      <div className="section-header">{title}</div>
+      <div className="divide-y divide-dotted divide-gray-400">
         {traits.map(t => (
           <TraitItem key={t.id} name={t.name} trait={t.trait} />
         ))}
