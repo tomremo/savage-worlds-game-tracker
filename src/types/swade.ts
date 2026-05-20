@@ -84,9 +84,9 @@ export interface SwadeGear {
   quantity: number;
   contains?: {
     gear: SwadeGear[];
-    weapons: any[];
-    armor: any[];
-    shields: any[];
+    weapons: SwadeWeapon[];
+    armor: SwadeArmor[];
+    shields: SwadeArmor[];
   };
   notes?: string;
   summary?: string;
@@ -201,7 +201,7 @@ export interface SwadeCharacter {
   gender?: string;
   hindrances?: SwadeHindrance[];
   name: string;
-  languages?: any[];
+  languages?: string[];
   paceBase?: number;
   paceMod?: number;
   paceTotal?: number;
