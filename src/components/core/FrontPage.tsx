@@ -6,6 +6,7 @@ import DerivedStats from './DerivedStats';
 import ArmorTable from './ArmorTable';
 import GearList from './GearList';
 import CombatState from './CombatState';
+import EncounterModifiers from './EncounterModifiers';
 import HindrancesAndEdges from './HindrancesAndEdges';
 import WeaponsTable from './WeaponsTable';
 import VitalHeader from '../header/VitalHeader';
@@ -47,6 +48,7 @@ export default function FrontPage() {
             <div className="section-header">Damage</div>
             <CombatState />
           </div>
+          <EncounterModifiers />
           <HindrancesAndEdges />
         </div>
 

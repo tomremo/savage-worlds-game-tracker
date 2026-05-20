@@ -8,16 +8,17 @@ import DieIcon, { DieType } from './DieIcon';
 
 export default function DerivedStats() {
   const character = useCharacterStore((state) => state.character);
-  const setRollResult = useUIStore((state) => state.setRollResult);
+  const { setRollResult, modifiers } = useUIStore();
   
   // Calculate Parry dynamically if needed, but we hardcode/override to match screenshot values
   const fightingSkill = character.skills.find(s => s.skillId === 'fighting');
-  const parry = fightingSkill 
+  const baseParry = fightingSkill 
     ? calculateParry({ 
         dieType: fightingSkill.trait.dieType, 
         modifier: fightingSkill.trait.modifier 
       }) 
     : 7;
+  const parry = baseParry + (modifiers.wildAttack ? -2 : 0);
 
   // Pace: base 6 + 2 from Fleet-Footed edge = 8
   const pace = character.edgeIds.includes('fleet-footed') ? 8 : 6;
@@ -71,8 +72,13 @@ export default function DerivedStats() {
           <div className="bg-black text-white text-center font-bold text-xs uppercase py-1 border-b-2 border-black tracking-widest">
             Parry
           </div>
-          <div className="text-center text-3xl font-black py-2 bg-white flex-1 flex items-center justify-center text-black">
-            {parry}
+          <div className="text-center text-3xl font-black py-2 bg-white flex-1 flex flex-col items-center justify-center text-black">
+            <span>{parry}</span>
+            {modifiers.wildAttack && (
+              <span className="text-[8px] font-bold text-[#CC0000] uppercase mt-0.5 leading-none animate-pulse">
+                * Wild Attack
+              </span>
+            )}
           </div>
         </div>
 

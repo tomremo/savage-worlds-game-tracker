@@ -6,7 +6,7 @@ import { calculateGlobalPenalty } from '@/engine/penalties';
 import DieIcon, { DieType } from '../core/DieIcon';
 
 export default function RollResult() {
-  const { rollOverlayVisible, activeRollResult, setRollOverlayVisible } = useUIStore();
+  const { rollOverlayVisible, activeRollResult, setRollOverlayVisible, modifiers } = useUIStore();
   const character = useCharacterStore(state => state.character);
 
   if (!rollOverlayVisible || !activeRollResult) return null;
@@ -18,7 +18,60 @@ export default function RollResult() {
     isDistracted: character.statuses.includes('Distracted'),
   });
 
-  const finalTotal = isRunningRoll ? result.finalResult : result.finalResult + penalty;
+  // Determine roll type and applicable modifiers
+  const rollNameLower = name.toLowerCase();
+  const isFighting = rollNameLower.includes('fighting');
+  const isRanged = rollNameLower.includes('shooting') || rollNameLower.includes('athletics') || rollNameLower.includes('throwing') || rollNameLower.includes('bow');
+
+  interface ActiveModifier {
+    label: string;
+    value: number;
+  }
+  const activeMods: ActiveModifier[] = [];
+
+  if (!isRunningRoll) {
+    // 1. Illumination (dim -2, dark -4, pitch-black -6)
+    if (modifiers.illumination === 'dim') activeMods.push({ label: 'Illumination (Dim)', value: -2 });
+    else if (modifiers.illumination === 'dark') activeMods.push({ label: 'Illumination (Dark)', value: -4 });
+    else if (modifiers.illumination === 'pitch-black') activeMods.push({ label: 'Illumination (Black)', value: -6 });
+
+    // 2. Custom Modifier
+    if (modifiers.customModifier !== 0) {
+      activeMods.push({ label: 'Custom Situational', value: modifiers.customModifier });
+    }
+
+    // 3. Enemy Vulnerable (+2)
+    if (modifiers.enemyVulnerable && (isFighting || isRanged)) {
+      activeMods.push({ label: 'Enemy Vulnerable', value: 2 });
+    }
+
+    // 4. Melee Specific Modifiers
+    if (isFighting) {
+      if (modifiers.gangUp > 0) {
+        activeMods.push({ label: `Gang Up (+${modifiers.gangUp})`, value: modifiers.gangUp });
+      }
+      if (modifiers.wildAttack) {
+        activeMods.push({ label: 'Wild Attack', value: 2 });
+      }
+    }
+
+    // 5. Ranged Specific Modifiers
+    if (isRanged) {
+      if (modifiers.cover !== 'none') {
+        const val = modifiers.cover === 'light' ? -2 : modifiers.cover === 'medium' ? -4 : modifiers.cover === 'heavy' ? -6 : -8;
+        const capCover = modifiers.cover.charAt(0).toUpperCase() + modifiers.cover.slice(1);
+        activeMods.push({ label: `${capCover} Cover`, value: val });
+      }
+      if (modifiers.range !== 'short') {
+        const val = modifiers.range === 'medium' ? -2 : modifiers.range === 'long' ? -4 : -6;
+        const capRange = modifiers.range.charAt(0).toUpperCase() + modifiers.range.slice(1);
+        activeMods.push({ label: `${capRange} Range`, value: val });
+      }
+    }
+  }
+
+  const combatModifierSum = activeMods.reduce((acc, m) => acc + m.value, 0);
+  const finalTotal = isRunningRoll ? result.finalResult : result.finalResult + penalty + combatModifierSum;
   const isSuccess = !isRunningRoll && finalTotal >= 4;
   const raises = !isRunningRoll ? Math.floor((finalTotal - 4) / 4) : 0;
 
@@ -91,6 +144,20 @@ export default function RollResult() {
               <div className="flex justify-between items-center py-1">
                 <span className="text-[0.7rem] font-black uppercase text-red-600 italic">Global Penalty</span>
                 <span className="text-sm font-black text-red-600">{penalty > 0 ? `+${penalty}` : penalty}</span>
+              </div>
+            )}
+
+            {activeMods.length > 0 && (
+              <div className="border-t border-dashed border-gray-200 mt-2 pt-2 space-y-1">
+                <div className="text-[8px] font-black uppercase text-gray-400 tracking-wider mb-1">Combat Modifiers</div>
+                {activeMods.map((mod, index) => (
+                  <div key={index} className="flex justify-between items-center py-0.5">
+                    <span className="text-[0.65rem] font-bold uppercase text-gray-600">{mod.label}</span>
+                    <span className={`text-xs font-mono font-black ${mod.value > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {mod.value > 0 ? `+${mod.value}` : mod.value}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
