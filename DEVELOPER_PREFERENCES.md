@@ -17,16 +17,20 @@ This document outlines the core technical and design preferences established dur
 - **Component Architecture**: 
   - Proactively use `'use client'` for all interactive components.
   - Keep components modular but maximize data density on the screen.
-- **State Management**: Zustand is the preferred choice, utilizing the `persist` middleware for persistent local state.
-- **Next.js & PWA**:
+- **State Management & State Deserialization**:
+  - Zustand is the preferred choice, utilizing the `persist` middleware for persistent local state.
+  - **Hygiene**: Because Zustand stores persistent states locally, components must perform defensive checks and filtration (e.g. filtering out obsolete dynamic/duplicate records like raw `(Unskilled)`) to protect against legacy or stale browser local storage.
+- **TypeScript Strictness**: Strictly avoid the usage of `any` types (e.g. `any[]`). Standardize on concrete, domain-specific types and interfaces (e.g., `SwadeWeapon[]`, `SwadeArmor[]`, `string[]`) to comply with strict linting rules.
+- **Next.js, PWA, and ESLint**:
   - Use `@serwist/next` for PWA functionality.
-  - **Critical Config**: Disable PWA features in development mode (`process.env.NODE_ENV === 'development'`) to avoid Turbopack conflicts.
-  - Use the `--webpack` flag in the `dev` script if necessary to support specific plugins.
+  - **Critical Config**: Disable PWA features in development mode (`process.env.NODE_ENV === 'development'`) to avoid Turbopack conflicts. Use the `--webpack` flag in the `dev` script if necessary to support specific plugins.
+  - **ESLint Ignores**: Dynamic build assets like PWA service workers (`public/sw.js` and `public/sw.js.map`) must be explicitly ignored in `eslint.config.mjs` using `globalIgnores` to avoid static analysis failures on minified compiler output.
 
 ## 🧪 Testing & Reliability
 - **Logic Coverage**: Target **100% unit test coverage** for all engine, store, and utility logic using Vitest.
 - **E2E Testing**:
   - Use Playwright for "Smoke Tests" (verifying app load, core interactions).
+  - **Playwright Selectors in Strict Mode**: Avoid querying generic string labels that also exist within interactive components, descriptions, or tooltips. Use exact matches (e.g., `div:text-is("B")`) or unique suffix markers (e.g. `"Fighting:"`) to resolve selector ambiguity.
   - Store E2E tests in a dedicated `/e2e` directory (separate from `./src` or `./tests`).
   - Exclude `/e2e` from Vitest runs to avoid configuration overhead.
 
