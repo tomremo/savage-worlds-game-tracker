@@ -7,7 +7,7 @@ import ActiveCore from '@/components/core/ActiveCore';
 import RollResult from '@/components/overlay/RollResult';
 
 export default function Home() {
-  const { viewMode, setViewMode } = useUIStore();
+  const { viewMode, setViewMode, enable3dDice, setEnable3dDice } = useUIStore();
   const characterName = useCharacterStore((state) => state.character?.name);
 
   useEffect(() => {
@@ -53,6 +53,16 @@ export default function Home() {
           }`}
         >
           Side-By-Side View
+        </button>
+        <button 
+          onClick={() => setEnable3dDice(!enable3dDice)}
+          className={`px-4 py-2 border-2 border-black font-extrabold font-serif text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_rgba(0,0,0,1)] cursor-pointer ${
+            enable3dDice 
+              ? 'bg-red-700 text-white hover:bg-red-800' 
+              : 'bg-white text-black hover:bg-gray-100'
+          }`}
+        >
+          3D Dice: {enable3dDice ? 'ON' : 'OFF'}
         </button>
       </div>
 

@@ -36,18 +36,21 @@ interface UIState {
   rollOverlayVisible: boolean;
   activeRollResult?: RollResultInfo;
   modifiers: CombatModifiers;
+  enable3dDice: boolean;
   setActiveTab: (tab: TabType) => void;
   setViewMode: (mode: ViewModeType) => void;
   setRollOverlayVisible: (visible: boolean) => void;
   setRollResult: (result: RollResultInfo | null) => void;
   updateModifier: <K extends keyof CombatModifiers>(key: K, value: CombatModifiers[K]) => void;
   resetModifiers: () => void;
+  setEnable3dDice: (enabled: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   activeTab: 'skills',
   viewMode: 'front',
   rollOverlayVisible: false,
+  enable3dDice: true,
   modifiers: { ...DEFAULT_MODIFIERS },
   setActiveTab: (tab) => set({ activeTab: tab }),
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -57,4 +60,5 @@ export const useUIStore = create<UIState>((set) => ({
     modifiers: { ...state.modifiers, [key]: value }
   })),
   resetModifiers: () => set({ modifiers: { ...DEFAULT_MODIFIERS } }),
+  setEnable3dDice: (enabled) => set({ enable3dDice: enabled }),
 }));
