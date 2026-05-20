@@ -38,3 +38,4 @@ This document outlines the core technical and design preferences established dur
   4. E2E Testing (Playwright)
 - **Task Tracking**: Maintain a granular `task.md` in the agent's brain/artifacts directory to track progress and state.
 - **Git Hygiene**: Frequent commits. Use the GitHub CLI (`gh`) for repository management.
+- **Git Push Restrictions**: Never execute `git push` or push commits to a remote repository without explicit user approval in the chat. All commits must remain strictly local until authorized.
