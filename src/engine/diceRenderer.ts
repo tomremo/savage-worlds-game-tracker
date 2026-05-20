@@ -29,10 +29,10 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
           { x: 1, y: -1, z: -1 }
         ],
         faces: [
-          [0, 1, 2],
-          [0, 3, 1],
-          [0, 2, 3],
-          [1, 3, 2]
+          [2, 1, 0],
+          [1, 3, 0],
+          [3, 2, 0],
+          [2, 3, 1]
         ]
       };
 
@@ -50,12 +50,12 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
           { x: -1, y: 1, z: 1 }
         ],
         faces: [
-          [0, 1, 2, 3], // Back
-          [5, 4, 7, 6], // Front
-          [4, 0, 3, 7], // Left
-          [1, 5, 6, 2], // Right
-          [3, 2, 6, 7], // Top
-          [4, 5, 1, 0]  // Bottom
+          [3, 2, 1, 0], // Back
+          [6, 7, 4, 5], // Front
+          [7, 3, 0, 4], // Left
+          [2, 6, 5, 1], // Right
+          [7, 6, 2, 3], // Top
+          [0, 1, 5, 4]  // Bottom
         ]
       };
 
@@ -158,22 +158,21 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
         { x: p, y: 0, z: t }     // 19
       ];
 
-      // 12 regular pentagon faces
+      // 12 regular pentagon faces with correct outward-pointing winding order
       const faces = [
-        [0, 8, 9, 3, 16],
-        [0, 16, 18, 4, 12],
-        [0, 12, 13, 1, 8],
-        [1, 13, 5, 19, 17],
-        [1, 17, 18, 0, 8], // Wait, let's fix standard dodecahedron indices
+        [0, 8, 1, 13, 12],
+        [16, 3, 9, 8, 0],
+        [0, 12, 4, 18, 16],
         [1, 8, 9, 2, 17],
+        [17, 19, 5, 13, 1],
         [2, 9, 3, 14, 15],
-        [3, 16, 18, 7, 14],
-        [4, 12, 13, 5, 10],
+        [2, 15, 6, 19, 17],
+        [16, 18, 7, 14, 3],
+        [12, 13, 5, 10, 4],
         [4, 10, 11, 7, 18],
-        [5, 10, 11, 6, 19],
-        [6, 11, 7, 14, 15],
-        [6, 15, 2, 17, 19]
-      ].slice(0, 12); // Restrict to exactly 12 faces
+        [19, 6, 11, 10, 5],
+        [15, 14, 7, 11, 6]
+      ];
 
       return { vertices, faces };
     }

@@ -128,7 +128,7 @@ describe('3D Dice Renderer & Physics Engine', () => {
       expect(die.y).not.toBe(80);
 
       // Running updates repeatedly should reduce velocities (due to friction damping)
-      for (let i = 0; i < 500; i++) {
+      for (let i = 0; i < 3000 && !die.settled; i++) {
         die.update(300, 200);
       }
 
