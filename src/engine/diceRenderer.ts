@@ -229,8 +229,10 @@ export const DICE_CONFIG = {
 export class PhysicsDie {
   x: number;
   y: number;
+  z: number;
   vx: number;
   vy: number;
+  vz: number;
   
   rx: number;
   ry: number;
@@ -247,6 +249,12 @@ export class PhysicsDie {
   // Maps face indices in geometry to fixed face numbers from 1 to sides
   faceNumbers: { [faceIndex: number]: number } = {};
 
+  // History buffer for drawing motion trails (speed lines)
+  history: Point3D[] = [];
+
+  // Active particle spark effects triggered during boundary or die impacts
+  sparks: { x: number; y: number; age: number; maxAge: number; size: number }[] = [];
+
   constructor(sides: DieSides, isWild: boolean, targetValue: number, startX: number, startY: number) {
     this.sides = sides;
     this.isWild = isWild;
@@ -255,10 +263,12 @@ export class PhysicsDie {
 
     this.x = startX;
     this.y = startY;
+    this.z = Math.random() * 40 - 20; // Start at random depth
 
     // Start with high random linear and angular velocities
     this.vx = (Math.random() * 8 - 4) * 2;
     this.vy = -(6 + Math.random() * 6); // Upwards initial toss
+    this.vz = (Math.random() * 4 - 2) * 2; // Dynamic depth velocity
     
     this.rx = Math.random() * Math.PI * 2;
     this.ry = Math.random() * Math.PI * 2;
@@ -310,67 +320,310 @@ export class PhysicsDie {
     });
   }
 
+  // Applies angular contact impulse at a vertex collision point
+  applyImpulse(r: Point3D, normal: Point3D, bounce: number): boolean {
+    // 1. Calculate relative velocity of the vertex: V_vertex = V_center + W x R
+    const v_rot = {
+      x: this.vry * r.z - this.vrz * r.y,
+      y: this.vrz * r.x - this.vrx * r.z,
+      z: this.vrx * r.y - this.vry * r.x
+    };
+    
+    const v_vertex = {
+      x: this.vx + v_rot.x,
+      y: this.vy + v_rot.y,
+      z: this.vz + v_rot.z
+    };
+    
+    // 2. Compute relative normal velocity
+    const v_rel = v_vertex.x * normal.x + v_vertex.y * normal.y + v_vertex.z * normal.z;
+    
+    // Only bounce if moving into the boundary
+    if (v_rel >= 0) return false;
+    
+    // 3. Calculate rotational torque factor: R x N
+    const rxn = {
+      x: r.y * normal.z - r.z * normal.y,
+      y: r.z * normal.x - r.x * normal.z,
+      z: r.x * normal.y - r.y * normal.x
+    };
+    
+    const rxn_sq = rxn.x * rxn.x + rxn.y * rxn.y + rxn.z * rxn.z;
+    
+    const M = 1.0;
+    const size = DICE_CONFIG.size;
+    const I = 0.42 * M * (size * 0.85) * (size * 0.85); // Solid plastic moment coefficient scaled to pixels
+    
+    const impulse = -(1 + bounce) * v_rel / (1 / M + rxn_sq / I);
+    
+    // 4. Apply impulse to velocities
+    this.vx += (impulse * normal.x) / M;
+    this.vy += (impulse * normal.y) / M;
+    this.vz += (impulse * normal.z) / M;
+    
+    // 5. Apply torque impulse to spin values
+    this.vrx += (impulse * rxn.x) / I;
+    this.vry += (impulse * rxn.y) / I;
+    this.vrz += (impulse * rxn.z) / I;
+    
+    return true;
+  }
+
+  // Performs vertex-precise boundary checks and shifts centers to resolve overlap
+  checkBoundaryCollisions(
+    width: number, 
+    height: number, 
+    bounce: number,
+    onCollision?: (type: 'bounce', speed: number) => void
+  ) {
+    const geo = getDieGeometry(this.sides);
+    const size = DICE_CONFIG.size;
+    const rotated = geo.vertices.map((v) => rotate3D(v, this.rx, this.ry, this.rz));
+    
+    let collided = false;
+    let maxVel = 0;
+    
+    // Check contact boundary for all 3D vertices
+    rotated.forEach((r) => {
+      const rx_px = r.x * size * 0.85;
+      const ry_px = r.y * size * 0.85;
+      const rz_px = r.z * size * 0.85;
+      
+      const px = this.x + rx_px;
+      const py = this.y + ry_px;
+      const pz = this.z + rz_px;
+      
+      // Bottom floor
+      if (py > height) {
+        const pen = py - height;
+        this.y -= pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 0, y: -1, z: 0 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vy);
+          if (speed > maxVel) maxVel = speed;
+          this.sparks.push({ x: px, y: height - 4, age: 0, maxAge: 14, size: 28 });
+        }
+      }
+      
+      // Top ceiling
+      if (py < 0) {
+        const pen = 0 - py;
+        this.y += pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 0, y: 1, z: 0 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vy);
+          if (speed > maxVel) maxVel = speed;
+          this.sparks.push({ x: px, y: 4, age: 0, maxAge: 14, size: 28 });
+        }
+      }
+      
+      // Left wall
+      if (px < 0) {
+        const pen = 0 - px;
+        this.x += pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 1, y: 0, z: 0 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vx);
+          if (speed > maxVel) maxVel = speed;
+          this.sparks.push({ x: 4, y: py, age: 0, maxAge: 14, size: 28 });
+        }
+      }
+      
+      // Right wall
+      if (px > width) {
+        const pen = px - width;
+        this.x -= pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: -1, y: 0, z: 0 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vx);
+          if (speed > maxVel) maxVel = speed;
+          this.sparks.push({ x: width - 4, y: py, age: 0, maxAge: 14, size: 28 });
+        }
+      }
+      
+      // Back wall depth limits
+      if (pz < -80) {
+        const pen = -80 - pz;
+        this.z += pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 0, y: 0, z: 1 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vz);
+          if (speed > maxVel) maxVel = speed;
+        }
+      }
+      
+      // Front glass depth limits
+      if (pz > 80) {
+        const pen = pz - 80;
+        this.z -= pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 0, y: 0, z: -1 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vz);
+          if (speed > maxVel) maxVel = speed;
+        }
+      }
+    });
+
+    if (collided && onCollision && maxVel > 0.4) {
+      onCollision('bounce', maxVel);
+    }
+  }
+
+  // Performs sphere-to-sphere elastic collision checking and momentum transfers
+  checkDieToDieCollision(
+    other: PhysicsDie, 
+    onCollision?: (type: 'die_collision', speed: number) => void
+  ) {
+    if (this.settled && other.settled) return;
+    
+    // 3D vector separation
+    const dx = other.x - this.x;
+    const dy = other.y - this.y;
+    const dz = other.z - this.z;
+    
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const radius = DICE_CONFIG.size * 0.48;
+    const minDist = radius * 2;
+    
+    if (dist < minDist && dist > 0.001) {
+      // Resolve overlapping penetration
+      const pen = minDist - dist;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const nz = dz / dist;
+      
+      const shiftX = nx * pen * 0.5;
+      const shiftY = ny * pen * 0.5;
+      const shiftZ = nz * pen * 0.5;
+      
+      if (!this.settled) {
+        this.x -= shiftX;
+        this.y -= shiftY;
+        this.z -= shiftZ;
+      }
+      if (!other.settled) {
+        other.x += shiftX;
+        other.y += shiftY;
+        other.z += shiftZ;
+      }
+      
+      // Relative velocity in collision vector direction
+      const rvx = other.vx - this.vx;
+      const rvy = other.vy - this.vy;
+      const rvz = other.vz - this.vz;
+      
+      const v_rel = rvx * nx + rvy * ny + rvz * nz;
+      
+      // Only resolve if moving towards each other
+      if (v_rel < 0) {
+        const e = 0.55; // resin elastic bounce
+        const j = -(1 + e) * v_rel / 2.0; // equal masses
+        
+        if (!this.settled) {
+          this.vx -= j * nx;
+          this.vy -= j * ny;
+          this.vz -= j * nz;
+          // minor random spin offset
+          this.vrx -= (Math.random() * 0.08 - 0.04);
+          this.vry -= (Math.random() * 0.08 - 0.04);
+          this.vrz -= (Math.random() * 0.08 - 0.04);
+        }
+        
+        if (!other.settled) {
+          other.vx += j * nx;
+          other.vy += j * ny;
+          other.vz += j * nz;
+          other.vrx += (Math.random() * 0.08 - 0.04);
+          other.vry += (Math.random() * 0.08 - 0.04);
+          other.vrz += (Math.random() * 0.08 - 0.04);
+        }
+        
+        // Spawn mutual contact sparks
+        const sparkX = this.x + nx * radius;
+        const sparkY = this.y + ny * radius;
+        
+        this.sparks.push({ x: sparkX, y: sparkY, age: 0, maxAge: 10, size: 20 });
+        other.sparks.push({ x: sparkX, y: sparkY, age: 0, maxAge: 10, size: 20 });
+        
+        if (onCollision && Math.abs(v_rel) > 0.35) {
+          onCollision('die_collision', Math.abs(v_rel));
+        }
+      }
+    }
+  }
+
   // Update physical coordinates
   update(
     width: number, 
     height: number, 
-    gravity: number = DICE_CONFIG.gravity, 
-    bounce: number = DICE_CONFIG.bounce
+    onCollision?: (type: 'bounce' | 'die_collision', speed: number) => void
   ) {
-    if (this.settled) return;
+    if (this.settled) {
+      this.sparks.forEach((s) => s.age++);
+      this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
+      return;
+    }
 
-    // Apply linear physics
+    // Save trailing history for motion trail lines
+    this.history.push({ x: this.x, y: this.y, z: this.z });
+    if (this.history.length > 4) {
+      this.history.shift();
+    }
+
+    // Apply linear gravity
+    this.vy += DICE_CONFIG.gravity;
+
+    // Update positions
     this.x += this.vx;
     this.y += this.vy;
-    this.vy += gravity;
+    this.z += this.vz;
 
-    // Apply rotational velocities
+    // Update rotational orientations
     this.rx += this.vrx;
     this.ry += this.vry;
     this.rz += this.vrz;
 
-    // Viewport Boundary Bounce (X limits)
-    const padding = DICE_CONFIG.size * 0.75;
-    if (this.x < padding) {
-      this.x = padding;
-      this.vx *= bounce;
-    } else if (this.x > width - padding) {
-      this.x = width - padding;
-      this.vx *= bounce;
-    }
+    // Boundary Bounces (vertex exact)
+    this.checkBoundaryCollisions(width, height, -DICE_CONFIG.bounce, onCollision);
 
-    // Viewport Boundary Bounce (Y limits)
-    if (this.y < padding) {
-      this.y = padding;
-      this.vy *= bounce;
-    } else if (this.y > height - padding) {
-      this.y = height - padding;
-      this.vy *= bounce;
-      this.vx *= 0.75; // Floor Friction
-      
-      // Decelerate rotation on collision
-      this.vrx *= 0.8;
-      this.vry *= 0.8;
-      this.vrz *= 0.8;
-    }
-
-    // Linear friction damping
+    // Friction Damping decay
     this.vx *= DICE_CONFIG.linearDamping;
     this.vy *= DICE_CONFIG.linearDamping;
+    this.vz *= DICE_CONFIG.linearDamping;
 
-    // Rotational friction damping
     this.vrx *= DICE_CONFIG.rotationalDamping;
     this.vry *= DICE_CONFIG.rotationalDamping;
     this.vrz *= DICE_CONFIG.rotationalDamping;
 
+    // Update sparks lifetime
+    this.sparks.forEach((s) => s.age++);
+    this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
+
     // Check if the die has come to rest (extremely low velocities)
-    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy + this.vz * this.vz);
     const rotSpeed = Math.abs(this.vrx) + Math.abs(this.vry) + Math.abs(this.vrz);
 
-    if (speed < 0.2 && rotSpeed < 0.05 && this.y >= height - padding - 5) {
+    // Check bottom contact
+    const geo = getDieGeometry(this.sides);
+    const size = DICE_CONFIG.size;
+    let lowestY = -Infinity;
+    geo.vertices.forEach((v) => {
+      const r = rotate3D(v, this.rx, this.ry, this.rz);
+      const py = this.y + r.y * size * 0.85;
+      if (py > lowestY) lowestY = py;
+    });
+
+    if (speed < 0.22 && rotSpeed < 0.05 && lowestY >= height - 12) {
       this.settled = true;
       this.vx = 0;
       this.vy = 0;
+      this.vz = 0;
       this.vrx = 0;
       this.vry = 0;
       this.vrz = 0;
@@ -379,6 +632,7 @@ export class PhysicsDie {
       this.rx = 0;
       this.ry = 0;
       this.rz = 0;
+      this.z = 0; // return to front depth
     }
   }
 
@@ -386,24 +640,89 @@ export class PhysicsDie {
   draw(ctx: CanvasRenderingContext2D, size: number = DICE_CONFIG.size) {
     const geo = getDieGeometry(this.sides);
     
-    // Rotate and project all vertices
+    // Rotate all vertices
     const rotatedVertices = geo.vertices.map((v) =>
       rotate3D(v, this.rx, this.ry, this.rz)
     );
 
+    // Project all vertices with realistic depth perspective shifts
     const projectedVertices = rotatedVertices.map((v) =>
-      project3D(v, this.x, this.y, size)
+      project3D({ x: v.x, y: v.y, z: v.z + this.z / size }, this.x, this.y, size)
     );
 
-    // Compute average Z of each face for Painter's Algorithm sorting (back-to-front rendering)
+    // Painter's Algorithm sorting (back-to-front rendering)
     const faceOrder = geo.faces
       .map((face, index) => {
         const avgZ = face.reduce((sum, vIdx) => sum + rotatedVertices[vIdx].z, 0) / face.length;
         return { index, avgZ };
       })
-      .sort((a, b) => b.avgZ - a.avgZ); // Larger Z = further back = rendered first
+      .sort((a, b) => b.avgZ - a.avgZ);
 
-    // Render faces
+    // Draw comic speed trails from historical buffers
+    this.history.forEach((hist, index) => {
+      const opacity = ((index + 1) / (this.history.length + 1)) * 0.14;
+      if (opacity <= 0) return;
+      
+      ctx.beginPath();
+      const rotatedH = geo.vertices.map((v) => rotate3D(v, this.rx, this.ry, this.rz));
+      const projectedH = rotatedH.map((v) =>
+        project3D({ x: v.x, y: v.y, z: v.z + hist.z / size }, hist.x, hist.y, size)
+      );
+
+      faceOrder.forEach(({ index: fIdx }) => {
+        const face = geo.faces[fIdx];
+        const v0 = rotatedH[face[0]];
+        const v1 = rotatedH[face[1]];
+        const v2 = rotatedH[face[2]];
+        
+        const nx = (v1.y - v0.y) * (v2.z - v0.z) - (v1.z - v0.z) * (v2.y - v0.y);
+        const ny = (v1.z - v0.z) * (v2.x - v0.x) - (v1.x - v0.x) * (v2.z - v0.z);
+        const nz = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+        
+        const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        const normalZ = length > 0 ? nz / length : 0;
+        
+        if (normalZ < 0) {
+          ctx.moveTo(projectedH[face[0]].x, projectedH[face[0]].y);
+          for (let i = 1; i < face.length; i++) {
+            ctx.lineTo(projectedH[face[i]].x, projectedH[face[i]].y);
+          }
+        }
+      });
+      
+      ctx.strokeStyle = this.isWild ? `rgba(180, 0, 0, ${opacity})` : `rgba(0, 0, 0, ${opacity})`;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    });
+
+    // Pass 1: Draw bold outer silhouette outline
+    ctx.beginPath();
+    faceOrder.forEach(({ index }) => {
+      const face = geo.faces[index];
+      const v0 = rotatedVertices[face[0]];
+      const v1 = rotatedVertices[face[1]];
+      const v2 = rotatedVertices[face[2]];
+      
+      const nx = (v1.y - v0.y) * (v2.z - v0.z) - (v1.z - v0.z) * (v2.y - v0.y);
+      const ny = (v1.z - v0.z) * (v2.x - v0.x) - (v1.x - v0.x) * (v2.z - v0.z);
+      const nz = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+      
+      const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      const normalZ = length > 0 ? nz / length : 0;
+
+      if (normalZ < 0) {
+        ctx.moveTo(projectedVertices[face[0]].x, projectedVertices[face[0]].y);
+        for (let i = 1; i < face.length; i++) {
+          ctx.lineTo(projectedVertices[face[i]].x, projectedVertices[face[i]].y);
+        }
+      }
+    });
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 6.0; // bold cartoon border
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Pass 2: Draw visible shaded faces
     faceOrder.forEach(({ index }) => {
       const face = geo.faces[index];
       
@@ -429,27 +748,32 @@ export class PhysicsDie {
         }
         ctx.closePath();
 
-        // Shading intensity based on direction (light source from top-left front)
-        const shadowAmt = Math.abs(normalZ); // between 0 and 1
+        // Discretized comic book cell shading
+        const shadowAmt = Math.abs(normalZ);
+        let cellShadow = 0.5;
+        if (shadowAmt > 0.82) {
+          cellShadow = 1.0;
+        } else if (shadowAmt > 0.45) {
+          cellShadow = 0.75;
+        } else {
+          cellShadow = 0.45;
+        }
         
-        // Solid brutalist themed fill colors (White for Trait, Deep Red for Wild)
         let fillStyle = '#ffffff';
         if (this.isWild) {
-          // Shaded Red Accent
-          const r = Math.floor(180 + shadowAmt * 75);
+          const r = Math.floor(140 + cellShadow * 115);
           fillStyle = `rgb(${r}, 0, 0)`;
         } else {
-          // Shaded White/Gray
-          const c = Math.floor(210 + shadowAmt * 45);
+          const c = Math.floor(180 + cellShadow * 75);
           fillStyle = `rgb(${c}, ${c}, ${c})`;
         }
 
         ctx.fillStyle = fillStyle;
         ctx.fill();
 
-        // Solid thick black outline
+        // Draw inner outlines (thin outlines for face boundaries)
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 1.8;
         ctx.lineJoin = 'round';
         ctx.stroke();
 
@@ -490,5 +814,60 @@ export class PhysicsDie {
         }
       }
     });
+
+    // Draw active collision stars particles
+    this.sparks.forEach((spark) => {
+      const ageFactor = 1 - spark.age / spark.maxAge;
+      drawComicStar(ctx, spark.x, spark.y, spark.size * ageFactor);
+    });
   }
 }
+
+// Draws a beautiful comic-style yellow star outline at boundary contact points
+export const drawComicStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) => {
+  if (size <= 0) return;
+  ctx.beginPath();
+  const spikes = 5;
+  const outerRadius = size;
+  const innerRadius = size * 0.45;
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+  
+  // Comic styled bright yellow fill with black solid stroke
+  ctx.fillStyle = '#FFEA00';
+  ctx.fill();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'miter';
+  ctx.stroke();
+  
+  // Outer explosive lines
+  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 3) {
+    ctx.beginPath();
+    const startLen = outerRadius * 1.15;
+    const endLen = outerRadius * 1.5;
+    ctx.moveTo(cx + Math.cos(angle) * startLen, cy + Math.sin(angle) * startLen);
+    ctx.lineTo(cx + Math.cos(angle) * endLen, cy + Math.sin(angle) * endLen);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  }
+};
+

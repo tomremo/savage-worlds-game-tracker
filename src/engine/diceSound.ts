@@ -3,66 +3,162 @@
  * Provides completely local, offline-compatible clattering and thud effects.
  */
 
-export const playDiceRollSound = () => {
-  if (typeof window === 'undefined') return;
+let sharedAudioCtx: AudioContext | null = null;
+
+const getSharedAudioContext = (): AudioContext | null => {
+  if (typeof window === 'undefined') return null;
+  if (sharedAudioCtx) return sharedAudioCtx;
+
+  const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return null;
 
   try {
-    const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
+    sharedAudioCtx = new AudioContextClass();
+  } catch (e) {
+    console.warn('Failed to initialize AudioContext:', e);
+    return null;
+  }
+  return sharedAudioCtx;
+};
 
-    const ctx = new AudioContextClass();
-    const now = ctx.currentTime;
+/**
+ * Synthesizes realistic, dynamically scaled sound effects for dice impacts.
+ * Uses high-pass filters for resin plastic clicks and band-pass resonant sweeps for wooden hollow body thuds.
+ */
+export const playCollisionSound = (type: 'bounce' | 'die_collision', velocity: number) => {
+  if (typeof window === 'undefined') return;
 
-    // 1. Generate Tumbling Clatter Clicks
-    const clicksCount = 5 + Math.floor(Math.random() * 3); // 5 to 7 clicks
-    let time = now;
+  const ctx = getSharedAudioContext();
+  if (!ctx) return;
 
-    for (let i = 0; i < clicksCount; i++) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      // Pitch sweeps downwards to simulate tumbling thuds (frequency from ~150Hz to ~40Hz)
-      const startFreq = 160 + Math.random() * 40 - i * 10;
-      osc.frequency.setValueAtTime(startFreq, time);
-      osc.frequency.exponentialRampToValueAtTime(40, time + 0.04);
-
-      // Gain Envelope: rapid attack, short decay
-      gain.gain.setValueAtTime(0, time);
-      gain.gain.linearRampToValueAtTime(0.12 * (1 - i / clicksCount), time + 0.003);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
-
-      osc.start(time);
-      osc.stop(time + 0.04);
-
-      // Space out tumble clicks with minor random spacing
-      time += 0.07 + Math.random() * 0.05;
+  try {
+    // Resume context if suspended by browser autoplay policy
+    if (ctx.state === 'suspended') {
+      ctx.resume();
     }
 
-    // 2. Dynamic Final Landing Impact
-    const oscImpact = ctx.createOscillator();
-    const gainImpact = ctx.createGain();
+    const now = ctx.currentTime;
     
-    // Use triangle wave for a softer, wooden/plastic thud character
-    oscImpact.type = 'triangle';
-    oscImpact.connect(gainImpact);
-    gainImpact.connect(ctx.destination);
+    // Scale volume linearly based on relative speed (max normalized speed of 15)
+    const vol = Math.min(Math.max(velocity / 15, 0.01), 1.0);
+    
+    // Ignore extremely light grazing contacts to avoid audio clutter
+    if (vol < 0.05) return;
 
-    // Deep low-frequency decay for landing
-    oscImpact.frequency.setValueAtTime(80, time);
-    oscImpact.frequency.exponentialRampToValueAtTime(15, time + 0.15);
+    if (type === 'bounce') {
+      // 1. Resin Clack Transient: high-pass filtered pitch sweep (decay 5-10ms)
+      const oscClack = ctx.createOscillator();
+      const gainClack = ctx.createGain();
+      const filterClack = ctx.createBiquadFilter();
 
-    // Main landing thud envelope
-    gainImpact.gain.setValueAtTime(0, time);
-    gainImpact.gain.linearRampToValueAtTime(0.25, time + 0.005);
-    gainImpact.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+      oscClack.type = 'sine';
+      oscClack.frequency.setValueAtTime(3800, now);
+      oscClack.frequency.exponentialRampToValueAtTime(1200, now + 0.01);
 
-    oscImpact.start(time);
-    oscImpact.stop(time + 0.18);
+      filterClack.type = 'highpass';
+      filterClack.frequency.setValueAtTime(3500, now);
+
+      gainClack.gain.setValueAtTime(0, now);
+      gainClack.gain.linearRampToValueAtTime(vol * 0.28, now + 0.001);
+      gainClack.gain.exponentialRampToValueAtTime(0.001, now + 0.008);
+
+      oscClack.connect(filterClack);
+      filterClack.connect(gainClack);
+      gainClack.connect(ctx.destination);
+
+      oscClack.start(now);
+      oscClack.stop(now + 0.015);
+
+      // 2. Resonant Wood Body Thud: decaying band-pass resonance at ~140Hz (decay 60ms)
+      const oscThud = ctx.createOscillator();
+      const gainThud = ctx.createGain();
+      const filterThud = ctx.createBiquadFilter();
+
+      // Triangle wave produces a hollow, woody acoustic character
+      oscThud.type = 'triangle';
+      
+      // Introduce subtle random variation around 140Hz for a more realistic organic sound
+      const resonantFreq = 135 + Math.random() * 10;
+      oscThud.frequency.setValueAtTime(resonantFreq, now);
+      oscThud.frequency.exponentialRampToValueAtTime(resonantFreq - 15, now + 0.06);
+
+      filterThud.type = 'bandpass';
+      filterThud.frequency.setValueAtTime(resonantFreq, now);
+      filterThud.Q.setValueAtTime(2.0, now);
+
+      gainThud.gain.setValueAtTime(0, now);
+      gainThud.gain.linearRampToValueAtTime(vol * 0.45, now + 0.002);
+      gainThud.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+      oscThud.connect(filterThud);
+      filterThud.connect(gainThud);
+      gainThud.connect(ctx.destination);
+
+      oscThud.start(now);
+      oscThud.stop(now + 0.08);
+
+    } else if (type === 'die_collision') {
+      // Resin-on-Resin collision: louder clack, higher body frequency, no deep wood thud
+      const oscClack = ctx.createOscillator();
+      const gainClack = ctx.createGain();
+      const filterClack = ctx.createBiquadFilter();
+
+      oscClack.type = 'sine';
+      oscClack.frequency.setValueAtTime(4200, now);
+      oscClack.frequency.exponentialRampToValueAtTime(1500, now + 0.012);
+
+      filterClack.type = 'highpass';
+      filterClack.frequency.setValueAtTime(3200, now);
+
+      gainClack.gain.setValueAtTime(0, now);
+      gainClack.gain.linearRampToValueAtTime(vol * 0.35, now + 0.001);
+      gainClack.gain.exponentialRampToValueAtTime(0.001, now + 0.01);
+
+      oscClack.connect(filterClack);
+      filterClack.connect(gainClack);
+      gainClack.connect(ctx.destination);
+
+      oscClack.start(now);
+      oscClack.stop(now + 0.018);
+
+      // Higher-frequency resin body resonance clatter (~450Hz decaying over 25ms)
+      const oscBody = ctx.createOscillator();
+      const gainBody = ctx.createGain();
+      const filterBody = ctx.createBiquadFilter();
+
+      oscBody.type = 'triangle';
+      const bodyFreq = 420 + Math.random() * 60;
+      oscBody.frequency.setValueAtTime(bodyFreq, now);
+      oscBody.frequency.exponentialRampToValueAtTime(200, now + 0.025);
+
+      filterBody.type = 'bandpass';
+      filterBody.frequency.setValueAtTime(bodyFreq, now);
+      filterBody.Q.setValueAtTime(1.5, now);
+
+      gainBody.gain.setValueAtTime(0, now);
+      gainBody.gain.linearRampToValueAtTime(vol * 0.22, now + 0.002);
+      gainBody.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+      oscBody.connect(filterBody);
+      filterBody.connect(gainBody);
+      gainBody.connect(ctx.destination);
+
+      oscBody.start(now);
+      oscBody.stop(now + 0.035);
+    }
   } catch (e) {
-    // Fail-safe silently if AudioContext is blocked by browser interaction permissions or headless tests
-    console.warn('AudioContext failed to initialize:', e);
+    // Fail-safe silently if AudioContext is blocked or headless
+    console.warn('AudioContext failed to play collision sound:', e);
   }
 };
+
+/**
+ * Kept for backwards compatibility and initial shake clatter backup.
+ */
+export const playDiceRollSound = () => {
+  // Directly simulate a nice woody initial rattle by calling playCollisionSound twice with slight delay
+  playCollisionSound('bounce', 12);
+  setTimeout(() => playCollisionSound('die_collision', 10), 60);
+  setTimeout(() => playCollisionSound('bounce', 8), 130);
+};
+

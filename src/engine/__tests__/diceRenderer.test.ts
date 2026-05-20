@@ -121,7 +121,7 @@ describe('3D Dice Renderer & Physics Engine', () => {
     it('should update physical coordinates and damp velocity over time', () => {
       const die = new PhysicsDie(8, true, 4, 150, 80);
 
-      die.update(300, 200, 0.5, -0.6);
+      die.update(300, 200);
 
       // Coordinates should change
       expect(die.x).not.toBe(150);
@@ -129,7 +129,7 @@ describe('3D Dice Renderer & Physics Engine', () => {
 
       // Running updates repeatedly should reduce velocities (due to friction damping)
       for (let i = 0; i < 500; i++) {
-        die.update(300, 200, 0.5, -0.6);
+        die.update(300, 200);
       }
 
       // Check that it eventually settles
@@ -139,6 +139,28 @@ describe('3D Dice Renderer & Physics Engine', () => {
       expect(die.rx).toBe(0);
       expect(die.ry).toBe(0);
       expect(die.rz).toBe(0);
+    });
+
+    it('should trigger boundary collision callback when hitting bottom floor', () => {
+      const die = new PhysicsDie(6, false, 3, 100, 195);
+      // Ensure deterministic pure vertical drop without random rotational influences interfering with collision detection
+      die.rx = 0;
+      die.ry = 0;
+      die.rz = 0;
+      die.vrx = 0;
+      die.vry = 0;
+      die.vrz = 0;
+      die.vy = 5; // moving downwards towards bottom floor (height = 200)
+
+      let callbackTriggered = false;
+      let callbackType = '';
+      die.update(200, 200, (type) => {
+        callbackTriggered = true;
+        callbackType = type;
+      });
+
+      expect(callbackTriggered).toBe(true);
+      expect(callbackType).toBe('bounce');
     });
   });
 });
