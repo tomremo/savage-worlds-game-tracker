@@ -59,8 +59,8 @@ export default function RollResult() {
     result.traitDie.rolls.forEach((val, idx) => {
       // Offset starting position per additional ace to prevent perfect overlap
       const offsetFactor = idx - (result.traitDie.rolls.length - 1) / 2;
-      const startX = canvasWidth * 0.4 + offsetFactor * 45 + (Math.random() * 30 - 15);
-      const startY = 80 + (Math.random() * 20 - 10);
+      const startX = canvasWidth * 0.5 - 60 + offsetFactor * 45 + (Math.random() * 30 - 15);
+      const startY = canvasHeight * 0.5 + (Math.random() * 40 - 20);
       const die = new PhysicsDie(
         result.traitDie.sides as DieSides,
         false,
@@ -79,8 +79,8 @@ export default function RollResult() {
       wildDie.rolls.forEach((val, idx) => {
         // Offset starting position per additional ace to prevent perfect overlap
         const offsetFactor = idx - (wildDie.rolls.length - 1) / 2;
-        const startX = canvasWidth * 0.6 + offsetFactor * 45 + (Math.random() * 30 - 15);
-        const startY = 80 + (Math.random() * 20 - 10);
+        const startX = canvasWidth * 0.5 + 60 + offsetFactor * 45 + (Math.random() * 30 - 15);
+        const startY = canvasHeight * 0.5 + (Math.random() * 40 - 20);
         const die = new PhysicsDie(
           wildDie.sides as DieSides,
           true,

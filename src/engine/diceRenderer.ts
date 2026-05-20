@@ -218,11 +218,11 @@ export const project3D = (
 // Centralized settings configuration for the 3D dice physics and rendering engine
 export const DICE_CONFIG = {
   size: 65,               // Scale size of the dice (increased for high impact)
-  gravity: 0.26,          // Gentler Z gravity into the table
-  bounce: -0.84,          // Higher bounciness
-  linearDamping: 0.993,   // Slower physical friction decay for longer slides
-  rotationalDamping: 0.988,// Slower spin friction decay for longer spins
-  duration: 3500,         // Keep screen rolling twice as long (ms)
+  gravity: 0.16,          // Gentler Z gravity into the table for floating 3D feel
+  bounce: -0.90,          // Highly elastic bounciness coefficient
+  linearDamping: 0.996,   // Extremely slow linear decay so they slide twice as long
+  rotationalDamping: 0.992,// Extremely slow rotational decay so they spin twice as long
+  duration: 7000,         // Double settling window to 7 seconds
 };
 
 // Dice Physical Instance
@@ -245,6 +245,7 @@ export class PhysicsDie {
   isWild: boolean;
   targetValue: number;
   settled: boolean;
+  isAligning: boolean = false; // Smooth transition alignment phase
 
   // Maps face indices in geometry to fixed face numbers from 1 to sides
   faceNumbers: { [faceIndex: number]: number } = {};
@@ -265,18 +266,18 @@ export class PhysicsDie {
     this.y = startY;
     this.z = Math.random() * 20 - 30; // Start closer to the camera/screen
 
-    // Thrown from the table upwards towards the player/camera, then falling back down
-    this.vx = (Math.random() * 8 - 4) * 2;
-    this.vy = (Math.random() * 8 - 4) * 2; // Screen Y is balanced (no gravity in Y direction)
-    this.vz = -(6 + Math.random() * 6);    // Upward toss in Z direction (towards camera)
+    // Thrown extremely energetically in all directions across the entire window tabletop
+    this.vx = (Math.random() * 12 - 6) * 2.5;
+    this.vy = (Math.random() * 12 - 6) * 2.5; // Balanced tabletop sliding velocity
+    this.vz = -(10 + Math.random() * 8);      // Upward toss in Z direction (towards camera)
     
     this.rx = Math.random() * Math.PI * 2;
     this.ry = Math.random() * Math.PI * 2;
     this.rz = Math.random() * Math.PI * 2;
 
-    this.vrx = (Math.random() * 0.4 - 0.2) * 2.5;
-    this.vry = (Math.random() * 0.4 - 0.2) * 2.5;
-    this.vrz = (Math.random() * 0.4 - 0.2) * 2.5;
+    this.vrx = (Math.random() * 0.5 - 0.25) * 3;
+    this.vry = (Math.random() * 0.5 - 0.25) * 3;
+    this.vrz = (Math.random() * 0.5 - 0.25) * 3;
 
     // Pre-calculate locked numbers on the faces
     this.initializeFaceNumbers();
@@ -571,6 +572,44 @@ export class PhysicsDie {
       return;
     }
 
+    // Wrap helper for target angle interpolation to prevent "long way around" spinning
+    const wrapAngle = (angle: number): number => {
+      let a = angle % (Math.PI * 2);
+      if (a > Math.PI) a -= Math.PI * 2;
+      if (a < -Math.PI) a += Math.PI * 2;
+      return a;
+    };
+
+    // Smooth resting alignment phase to prevent sudden snapping/jittering
+    if (this.isAligning) {
+      this.rx = wrapAngle(this.rx);
+      this.ry = wrapAngle(this.ry);
+      this.rz = wrapAngle(this.rz);
+
+      this.rx += (0 - this.rx) * 0.15;
+      this.ry += (0 - this.ry) * 0.15;
+      this.rz += (0 - this.rz) * 0.15;
+      this.z += (0 - this.z) * 0.15;
+
+      if (
+        Math.abs(this.rx) < 0.01 &&
+        Math.abs(this.ry) < 0.01 &&
+        Math.abs(this.rz) < 0.01 &&
+        Math.abs(this.z) < 0.1
+      ) {
+        this.settled = true;
+        this.isAligning = false;
+        this.rx = 0;
+        this.ry = 0;
+        this.rz = 0;
+        this.z = 0;
+      }
+      
+      this.sparks.forEach((s) => s.age++);
+      this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
+      return;
+    }
+
     // Save trailing history for motion trail lines
     this.history.push({ x: this.x, y: this.y, z: this.z });
     if (this.history.length > 4) {
@@ -621,19 +660,13 @@ export class PhysicsDie {
     });
 
     if (speed < 0.22 && rotSpeed < 0.05 && highestZ >= 40 - 12) {
-      this.settled = true;
+      this.isAligning = true;
       this.vx = 0;
       this.vy = 0;
       this.vz = 0;
       this.vrx = 0;
       this.vry = 0;
       this.vrz = 0;
-
-      // Force resting rotation angles to face the camera flush
-      this.rx = 0;
-      this.ry = 0;
-      this.rz = 0;
-      this.z = 0; // return to front depth
     }
   }
 
@@ -646,9 +679,9 @@ export class PhysicsDie {
       rotate3D(v, this.rx, this.ry, this.rz)
     );
 
-    // Project all vertices with realistic depth perspective shifts
+    // Project all vertices using the die's center depth for uniform scaling to completely eliminate rotational shape distortion
     const projectedVertices = rotatedVertices.map((v) =>
-      project3D({ x: v.x, y: v.y, z: v.z + this.z / size }, this.x, this.y, size)
+      project3D({ x: v.x, y: v.y, z: this.z / size }, this.x, this.y, size)
     );
 
     // Painter's Algorithm sorting (back-to-front rendering)
@@ -667,7 +700,7 @@ export class PhysicsDie {
       ctx.beginPath();
       const rotatedH = geo.vertices.map((v) => rotate3D(v, this.rx, this.ry, this.rz));
       const projectedH = rotatedH.map((v) =>
-        project3D({ x: v.x, y: v.y, z: v.z + hist.z / size }, hist.x, hist.y, size)
+        project3D({ x: v.x, y: v.y, z: hist.z / size }, hist.x, hist.y, size)
       );
 
       faceOrder.forEach(({ index: fIdx }) => {
