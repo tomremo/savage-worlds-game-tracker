@@ -14,27 +14,28 @@ export default function VitalHeader() {
   });
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-[12vh] z-50 flex items-center justify-between px-8 bg-white border-b-4 border-black">
-      <div className="flex flex-col">
-        <h1 className="text-4xl font-extrabold tracking-tight text-black uppercase">
+    <header className="w-full flex flex-col md:flex-row items-stretch justify-between gap-6 mb-2">
+      {/* Title Block */}
+      <div className="flex-1 border-4 border-black bg-white p-4 md:p-6 flex flex-col justify-center">
+        <h1 className="text-5xl md:text-6xl lg:text-[5.5rem] font-sans text-black tracking-tight leading-none mb-1 text-center md:text-left">
           {character.name}
         </h1>
-        <div className="flex gap-2 text-sm font-bold text-gray-700 mt-1">
-          <span>{character.rank}</span>
-          <span>Male</span>
-          <span>{character.ancestry},</span>
-          <span>{character.className} game warden</span>
+        <div className="text-xs md:text-sm font-sans text-black mt-2 text-center md:text-left">
+          {character.rank} Male {character.ancestry}, {character.className} game warden
         </div>
       </div>
 
-      <div className="flex items-center gap-8">
-        <div className="flex flex-col items-center">
-           <PenaltyBadge penalty={penalty} />
+      {/* Logos and Bennies */}
+      <div className="flex flex-col items-end justify-between min-w-[300px] gap-2">
+        <div className="w-full h-16 md:h-24 border-2 border-dashed border-gray-400 flex items-center justify-center text-sm font-bold text-gray-500 bg-gray-50 uppercase object-contain">
+           [ Pathfinder / Savage Worlds Logos ]
         </div>
-        <BenniePool count={character.bennies} />
-        {/* Mock Pathfinder/Savage Worlds Logos would go here */}
-        <div className="hidden md:block w-32 h-12 bg-gray-200 border border-gray-400 flex items-center justify-center text-[0.6rem] font-bold text-gray-500 uppercase">
-          Logo Placeholder
+        
+        <div className="flex items-center gap-6 w-full justify-end mt-2 pr-2">
+          <div className="flex flex-col items-center">
+             <PenaltyBadge penalty={penalty} />
+          </div>
+          <BenniePool count={character.bennies} />
         </div>
       </div>
     </header>

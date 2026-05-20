@@ -29,20 +29,27 @@ body {
 
 .section-container {
   background: white;
-  border: 2px solid black;
+  border: 4px solid black;
   overflow: hidden;
 }
 
 .section-header {
   background: black;
   color: white;
-  padding: 0.25rem 0.5rem;
+  padding: 0.15rem 0.5rem;
   font-weight: bold;
   text-align: center;
-  font-family: 'Times New Roman', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.875rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  font-size: 1rem;
+}
+
+.dotted-leader {
+  flex-grow: 1;
+  border-bottom: 3px dotted #1a1a1a;
+  margin: 0 4px;
+  position: relative;
+  top: -6px;
 }
 
 .data-box {

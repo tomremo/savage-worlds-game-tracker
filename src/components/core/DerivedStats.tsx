@@ -6,15 +6,12 @@ import { calculateParry, calculateToughness } from '@/engine/derived';
 export default function DerivedStats() {
   const character = useCharacterStore((state) => state.character);
   
-  // Calculate Parry (base 2 + half Fighting)
-  // Finding fighting skill
   const fightingSkill = character.skills.find(s => s.skillId === 'fighting');
   const parry = calculateParry({ 
     dieType: fightingSkill?.trait.dieType || 4, 
     modifier: fightingSkill?.trait.modifier || 0 
   });
 
-  // Calculate Toughness (base 2 + half Vigor + armor)
   const toughness = calculateToughness({
     dieType: character.attributes.vigor.dieType,
     modifier: character.attributes.vigor.modifier
@@ -23,18 +20,18 @@ export default function DerivedStats() {
   return (
     <div className="section-container">
       <div className="section-header">Derived</div>
-      <div className="grid grid-cols-3 divide-x divide-black">
-        <div className="data-box">
-          <div className="data-box-label">Pace</div>
-          <div className="data-box-value">6</div>
+      <div className="flex justify-between items-stretch gap-2 p-2 bg-[#f4f4f4]">
+        <div className="flex-1 flex flex-col border-2 border-black bg-white">
+          <div className="bg-black text-white text-center font-bold text-sm py-1 border-b-2 border-black tracking-wide">Pace</div>
+          <div className="text-center text-4xl font-sans py-3 bg-white flex-1 flex items-center justify-center">6</div>
         </div>
-        <div className="data-box">
-          <div className="data-box-label">Parry</div>
-          <div className="data-box-value">{parry}</div>
+        <div className="flex-1 flex flex-col border-2 border-black bg-white">
+          <div className="bg-black text-white text-center font-bold text-sm py-1 border-b-2 border-black tracking-wide">Parry</div>
+          <div className="text-center text-4xl font-sans py-3 bg-white flex-1 flex items-center justify-center">{parry}</div>
         </div>
-        <div className="data-box">
-          <div className="data-box-label">Toughness</div>
-          <div className="data-box-value">{toughness} (0)</div>
+        <div className="flex-1 flex flex-col border-2 border-black bg-white">
+          <div className="bg-black text-white text-center font-bold text-sm py-1 border-b-2 border-black tracking-wide">Toughness</div>
+          <div className="text-center text-4xl font-sans py-3 bg-white flex-1 flex items-center justify-center">{toughness} (5)</div>
         </div>
       </div>
     </div>
