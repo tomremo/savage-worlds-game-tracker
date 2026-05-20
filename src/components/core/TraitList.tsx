@@ -20,11 +20,13 @@ export default function TraitList({ type, title }: { type: 'attributes' | 'skill
           name: '(Unskilled)', 
           trait: { dieType: 4, modifier: -2 } as Trait 
         },
-        ...character.skills.map(s => ({
-          id: s.skillId,
-          name: skillDefinitions.find(sd => sd.id === s.skillId)?.name || s.skillId,
-          trait: s.trait
-        }))
+        ...character.skills
+          .filter(s => s.skillId !== 'unskilled' && !s.skillId.includes('unskilled'))
+          .map(s => ({
+            id: s.skillId,
+            name: skillDefinitions.find(sd => sd.id === s.skillId)?.name || s.skillId,
+            trait: s.trait
+          }))
       ];
 
   return (
