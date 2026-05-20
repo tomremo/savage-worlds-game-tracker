@@ -794,41 +794,103 @@ export class PhysicsDie {
         // Draw numbers physically locked to each face (spin & settled states)
         const faceNum = this.faceNumbers[index];
         if (faceNum !== undefined) {
-          // Find center coordinates of the polygon face
-          let cx = 0, cy = 0;
+          // Compute face center in 3D
+          let cx3D = 0, cy3D = 0, cz3D = 0;
           face.forEach((vIdx) => {
-            cx += projectedVertices[vIdx].x;
-            cy += projectedVertices[vIdx].y;
+            cx3D += rotatedVertices[vIdx].x;
+            cy3D += rotatedVertices[vIdx].y;
+            cz3D += rotatedVertices[vIdx].z;
           });
-          cx /= face.length;
-          cy /= face.length;
+          cx3D /= face.length;
+          cy3D /= face.length;
+          cz3D /= face.length;
+          const center3D = { x: cx3D, y: cy3D, z: cz3D };
 
-          ctx.fillStyle = '#000000';
-          
-          // Compute dynamic perspective factor to scale the face numbers to the exact size of the die at its current depth
-          const d = 15.0;
-          const currentFactor = size / (1 + (this.z / size) / d);
+          // 3D face normal
+          const v0 = rotatedVertices[face[0]];
+          const v1 = rotatedVertices[face[1]];
+          const v2 = rotatedVertices[face[2]];
+          const nx = (v1.y - v0.y) * (v2.z - v0.z) - (v1.z - v0.z) * (v2.y - v0.y);
+          const ny = (v1.z - v0.z) * (v2.x - v0.x) - (v1.x - v0.x) * (v2.z - v0.z);
+          const nz = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+          const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+          const hatN = {
+            x: length > 0 ? nx / length : 0,
+            y: length > 0 ? ny / length : 0,
+            z: length > 0 ? nz / length : 0
+          };
+
+          // Top direction of the face: points towards v0
+          const vx = v0.x - cx3D;
+          const vy = v0.y - cy3D;
+          const vz = v0.z - cz3D;
+          const vLen = Math.sqrt(vx * vx + vy * vy + vz * vz);
+          // hatV (vertical down axis of the text) points away from v0
+          const hatV = {
+            x: vLen > 0 ? -vx / vLen : 0,
+            y: vLen > 0 ? -vy / vLen : 1,
+            z: vLen > 0 ? -vz / vLen : 0
+          };
+
+          // Orthogonalize hatV to hatN
+          const dot = hatV.x * hatN.x + hatV.y * hatN.y + hatV.z * hatN.z;
+          hatV.x -= dot * hatN.x;
+          hatV.y -= dot * hatN.y;
+          hatV.z -= dot * hatN.z;
+          const hatVLen = Math.sqrt(hatV.x * hatV.x + hatV.y * hatV.y + hatV.z * hatV.z);
+          if (hatVLen > 0) {
+            hatV.x /= hatVLen;
+            hatV.y /= hatVLen;
+            hatV.z /= hatVLen;
+          }
+
+          // hatU = hatN x hatV (pointing to the right of the text)
+          const hatU = {
+            x: hatN.y * hatV.z - hatN.z * hatV.y,
+            y: hatN.z * hatV.x - hatN.x * hatV.z,
+            z: hatN.x * hatV.y - hatN.y * hatV.x
+          };
+
+          // Project center to 2D screen coordinates
+          const S_center = project3D({ x: center3D.x, y: center3D.y, z: this.z / size }, this.x, this.y, size);
+
+          // Project unit offsets to establish screen basis vectors
+          const P_x = { x: center3D.x + hatU.x, y: center3D.y + hatU.y, z: center3D.z + hatU.z };
+          const S_x = project3D({ x: P_x.x, y: P_x.y, z: this.z / size }, this.x, this.y, size);
+
+          const P_y = { x: center3D.x + hatV.x, y: center3D.y + hatV.y, z: center3D.z + hatV.z };
+          const S_y = project3D({ x: P_y.x, y: P_y.y, z: this.z / size }, this.x, this.y, size);
+
+          const vecX = { x: S_x.x - S_center.x, y: S_x.y - S_center.y };
+          const vecY = { x: S_y.x - S_center.x, y: S_y.y - S_center.y };
+
+          ctx.save();
+          // Apply affine transformation to map text plane directly onto projected 3D face
+          ctx.transform(vecX.x, vecX.y, vecY.x, vecY.y, S_center.x, S_center.y);
 
           if (this.settled) {
             // Draw only on frontmost face when settled for maximum readability
             const isFrontmost = index === faceOrder[faceOrder.length - 1].index;
             if (isFrontmost) {
-              ctx.font = `black 900 ${currentFactor * 0.45}px Times New Roman, Georgia, serif`;
+              ctx.font = `900 0.68px "Times New Roman", Georgia, serif`;
               if (faceNum === this.sides) {
                 ctx.fillStyle = '#CC0000'; // Brutalist Red Ace
+              } else {
+                ctx.fillStyle = '#000000';
               }
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillText(faceNum.toString(), cx, cy);
+              ctx.fillText(faceNum.toString(), 0, 0);
             }
           } else {
             // Always show numbers on faces during rotation, fully synced to 3D movement and depth scaling
-            ctx.font = `black 900 ${currentFactor * 0.38}px Times New Roman, Georgia, serif`;
+            ctx.font = `900 0.58px "Times New Roman", Georgia, serif`;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; // High-contrast opacity
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(faceNum.toString(), cx, cy);
+            ctx.fillText(faceNum.toString(), 0, 0);
           }
+          ctx.restore();
         }
       }
     });
