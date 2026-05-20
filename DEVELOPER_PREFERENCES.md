@@ -39,3 +39,7 @@ This document outlines the core technical and design preferences established dur
 - **Task Tracking**: Maintain a granular `task.md` in the agent's brain/artifacts directory to track progress and state.
 - **Git Hygiene**: Frequent commits. Use the GitHub CLI (`gh`) for repository management.
 - **Git Push Restrictions**: Never execute `git push` or push commits to a remote repository without explicit user approval in the chat. All commits must remain strictly local until authorized.
+
+## 🪙 Token & Context Optimization
+- **Token Hygiene**: When explaining modifications, highlight only the exact line range changes using minimal git diffs or block snippets. Avoid restating or outputting large blocks of unchanged code.
+- **Targeted Vitest**: During development and verification runs, execute unit tests target-specifically (e.g., `npm run test -- <filename> --run`) to minimize command outputs and prevent log-flooding in the terminal context.
