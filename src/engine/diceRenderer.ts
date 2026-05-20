@@ -83,17 +83,21 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
       };
 
     case 10: {
-      // Pentagonal Trapezohedron: 2 apexes + 10 ring vertices staggered up/down
+      // Mathematically precise Pentagonal Trapezohedron (100% planar kite faces)
       const vertices: Point3D[] = [];
       const r = 1.1;
-      const h = 0.35;
+      const b = 1.3; // Apex height
+      
+      // Calculate the exact stagger height 'h' to guarantee perfect planarity
+      const cos36 = Math.cos(Math.PI / 5);
+      const h = b * (1 - cos36) / (1 + cos36); // ~0.1372
       
       // Top Apex
-      vertices.push({ x: 0, y: -1.3, z: 0 });
+      vertices.push({ x: 0, y: -b, z: 0 }); // 0
       // Bottom Apex
-      vertices.push({ x: 0, y: 1.3, z: 0 });
+      vertices.push({ x: 0, y: b, z: 0 });  // 1
       
-      // 10 Staggered middle ring vertices
+      // 10 Staggered middle ring vertices (even = upper ring, odd = lower ring)
       for (let i = 0; i < 10; i++) {
         const angle = (i * Math.PI) / 5;
         const staggerY = i % 2 === 0 ? -h : h;
@@ -104,20 +108,21 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
         });
       }
 
-      // 10 quadrilateral (kite-shaped) faces of the trapezohedron
+      // 10 congruent, coplanar, outward-wound kite faces
       const faces: number[][] = [];
-      for (let i = 0; i < 10; i++) {
-        const curr = i + 2;
-        const next = ((i + 1) % 10) + 2;
-        const prev = ((i - 1 + 10) % 10) + 2;
-        if (i % 2 === 0) {
-          // Connected to top apex (0)
-          faces.push([0, prev, curr, next]);
-        } else {
-          // Connected to bottom apex (1)
-          faces.push([1, next, curr, prev]);
-        }
+      for (let k = 0; k < 5; k++) {
+        const T_k = 2 * k + 2;
+        const B_k = 2 * k + 3;
+        const T_next = 2 * ((k + 1) % 5) + 2;
+        const B_next = 2 * ((k + 1) % 5) + 3;
+
+        // Top half faces (connected to top apex 0)
+        faces.push([0, T_k, B_k, T_next]);
+
+        // Bottom half faces (connected to bottom apex 1)
+        faces.push([1, B_next, T_next, B_k]);
       }
+      
       return { vertices, faces };
     }
 
