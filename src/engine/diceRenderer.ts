@@ -104,18 +104,18 @@ export const getDieGeometry = (sides: DieSides): PolyhedronGeometry => {
         });
       }
 
+      // 10 quadrilateral (kite-shaped) faces of the trapezohedron
       const faces: number[][] = [];
       for (let i = 0; i < 10; i++) {
-        const nextIdx = ((i + 1) % 10) + 2;
-        const currIdx = i + 2;
+        const curr = i + 2;
+        const next = ((i + 1) % 10) + 2;
+        const prev = ((i - 1 + 10) % 10) + 2;
         if (i % 2 === 0) {
-          // Top faces (connected to top apex 0)
-          faces.push([0, currIdx, nextIdx]);
-          // Bottom faces (connected to bottom apex 1)
-          faces.push([1, nextIdx, currIdx]);
+          // Connected to top apex (0)
+          faces.push([0, prev, curr, next]);
         } else {
-          faces.push([0, currIdx, nextIdx]);
-          faces.push([1, nextIdx, currIdx]);
+          // Connected to bottom apex (1)
+          faces.push([1, next, curr, prev]);
         }
       }
       return { vertices, faces };
@@ -252,9 +252,6 @@ export class PhysicsDie {
 
   // History buffer for drawing motion trails (speed lines)
   history: Point3D[] = [];
-
-  // Active particle spark effects triggered during boundary or die impacts
-  sparks: { x: number; y: number; age: number; maxAge: number; size: number }[] = [];
 
   constructor(sides: DieSides, isWild: boolean, targetValue: number, startX: number, startY: number) {
     this.sides = sides;
@@ -403,7 +400,6 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vy);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -416,7 +412,6 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vy);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -429,7 +424,6 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vx);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -442,7 +436,6 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vx);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -455,7 +448,6 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vz);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -546,12 +538,7 @@ export class PhysicsDie {
           other.vrz += (Math.random() * 0.08 - 0.04);
         }
         
-        // Spawn mutual contact sparks
-        const sparkX = this.x + nx * radius;
-        const sparkY = this.y + ny * radius;
-        
-        this.sparks.push({ x: sparkX, y: sparkY, age: 0, maxAge: 10, size: 20 });
-        other.sparks.push({ x: sparkX, y: sparkY, age: 0, maxAge: 10, size: 20 });
+        // Solid elastic collision momentum resolution without sparks
         
         if (onCollision && Math.abs(v_rel) > 0.35) {
           onCollision('die_collision', Math.abs(v_rel));
@@ -566,11 +553,7 @@ export class PhysicsDie {
     height: number, 
     onCollision?: (type: 'bounce' | 'die_collision', speed: number) => void
   ) {
-    if (this.settled) {
-      this.sparks.forEach((s) => s.age++);
-      this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
-      return;
-    }
+    if (this.settled) return;
 
     // Wrap helper for target angle interpolation to prevent "long way around" spinning
     const wrapAngle = (angle: number): number => {
@@ -604,9 +587,6 @@ export class PhysicsDie {
         this.rz = 0;
         this.z = 0;
       }
-      
-      this.sparks.forEach((s) => s.age++);
-      this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
       return;
     }
 
@@ -640,10 +620,6 @@ export class PhysicsDie {
     this.vrx *= DICE_CONFIG.rotationalDamping;
     this.vry *= DICE_CONFIG.rotationalDamping;
     this.vrz *= DICE_CONFIG.rotationalDamping;
-
-    // Update sparks lifetime
-    this.sparks.forEach((s) => s.age++);
-    this.sparks = this.sparks.filter((s) => s.age < s.maxAge);
 
     // Check if the die has come to rest (extremely low velocities)
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy + this.vz * this.vz);
@@ -825,11 +801,15 @@ export class PhysicsDie {
 
           ctx.fillStyle = '#000000';
           
+          // Compute dynamic perspective factor to scale the face numbers to the exact size of the die at its current depth
+          const d = 15.0;
+          const currentFactor = size / (1 + (this.z / size) / d);
+
           if (this.settled) {
             // Draw only on frontmost face when settled for maximum readability
             const isFrontmost = index === faceOrder[faceOrder.length - 1].index;
             if (isFrontmost) {
-              ctx.font = `black 900 ${size * 0.45}px Times New Roman, Georgia, serif`;
+              ctx.font = `black 900 ${currentFactor * 0.45}px Times New Roman, Georgia, serif`;
               if (faceNum === this.sides) {
                 ctx.fillStyle = '#CC0000'; // Brutalist Red Ace
               }
@@ -838,8 +818,8 @@ export class PhysicsDie {
               ctx.fillText(faceNum.toString(), cx, cy);
             }
           } else {
-            // Always show numbers on faces during rotation, fully synced to 3D movement
-            ctx.font = `black 900 ${size * 0.38}px Times New Roman, Georgia, serif`;
+            // Always show numbers on faces during rotation, fully synced to 3D movement and depth scaling
+            ctx.font = `black 900 ${currentFactor * 0.38}px Times New Roman, Georgia, serif`;
             ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; // High-contrast opacity
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -848,60 +828,6 @@ export class PhysicsDie {
         }
       }
     });
-
-    // Draw active collision stars particles
-    this.sparks.forEach((spark) => {
-      const ageFactor = 1 - spark.age / spark.maxAge;
-      drawComicStar(ctx, spark.x, spark.y, spark.size * ageFactor);
-    });
   }
 }
-
-// Draws a beautiful comic-style yellow star outline at boundary contact points
-export const drawComicStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) => {
-  if (size <= 0) return;
-  ctx.beginPath();
-  const spikes = 5;
-  const outerRadius = size;
-  const innerRadius = size * 0.45;
-  let rot = (Math.PI / 2) * 3;
-  let x = cx;
-  let y = cy;
-  const step = Math.PI / spikes;
-
-  ctx.moveTo(cx, cy - outerRadius);
-  for (let i = 0; i < spikes; i++) {
-    x = cx + Math.cos(rot) * outerRadius;
-    y = cy + Math.sin(rot) * outerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-
-    x = cx + Math.cos(rot) * innerRadius;
-    y = cy + Math.sin(rot) * innerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-  }
-  ctx.lineTo(cx, cy - outerRadius);
-  ctx.closePath();
-  
-  // Comic styled bright yellow fill with black solid stroke
-  ctx.fillStyle = '#FFEA00';
-  ctx.fill();
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2.2;
-  ctx.lineJoin = 'miter';
-  ctx.stroke();
-  
-  // Outer explosive lines
-  for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 3) {
-    ctx.beginPath();
-    const startLen = outerRadius * 1.15;
-    const endLen = outerRadius * 1.5;
-    ctx.moveTo(cx + Math.cos(angle) * startLen, cy + Math.sin(angle) * startLen);
-    ctx.lineTo(cx + Math.cos(angle) * endLen, cy + Math.sin(angle) * endLen);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-  }
-};
 

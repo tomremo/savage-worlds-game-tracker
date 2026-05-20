@@ -25,8 +25,8 @@ describe('3D Dice Renderer & Physics Engine', () => {
       // d10 (Pentagonal Trapezohedron)
       const d10 = getDieGeometry(10);
       expect(d10.vertices.length).toBe(12);
-      expect(d10.faces.length).toBe(20);
-      d10.faces.forEach(f => expect(f.length).toBe(3)); // Staggered apex triangular subdivision
+      expect(d10.faces.length).toBe(10);
+      d10.faces.forEach(f => expect(f.length).toBe(4)); // Quadrilateral (kite-shaped) faces
 
       // d12 (Regular Dodecahedron)
       const d12 = getDieGeometry(12);
