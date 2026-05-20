@@ -200,15 +200,15 @@ export const rotate3D = (p: Point3D, rx: number, ry: number, rz: number): Point3
   return { x: x3, y: y3, z: z2 };
 };
 
-// Perspective Projection Projection
+// Perspective Projection
 export const project3D = (
   p: Point3D,
   cx: number,
   cy: number,
   scale: number
 ): { x: number; y: number } => {
-  const d = 4.0; // View distance
-  const factor = scale / (d + p.z);
+  const d = 15.0; // Flat, realistic telephoto perspective to eliminate rotational distortion
+  const factor = scale / (1 + p.z / d);
   return {
     x: cx + p.x * factor,
     y: cy + p.y * factor
@@ -218,11 +218,11 @@ export const project3D = (
 // Centralized settings configuration for the 3D dice physics and rendering engine
 export const DICE_CONFIG = {
   size: 65,               // Scale size of the dice (increased for high impact)
-  gravity: 0.5,           // Gravity acceleration force
-  bounce: -0.76,          // Bounciness / elasticity coefficient
-  linearDamping: 0.985,   // Linear speed friction decay
-  rotationalDamping: 0.975,// Rotational speed friction decay
-  duration: 1500,         // Maximum animation duration (ms)
+  gravity: 0.26,          // Gentler Z gravity into the table
+  bounce: -0.84,          // Higher bounciness
+  linearDamping: 0.993,   // Slower physical friction decay for longer slides
+  rotationalDamping: 0.988,// Slower spin friction decay for longer spins
+  duration: 3500,         // Keep screen rolling twice as long (ms)
 };
 
 // Dice Physical Instance
@@ -263,12 +263,12 @@ export class PhysicsDie {
 
     this.x = startX;
     this.y = startY;
-    this.z = Math.random() * 40 - 20; // Start at random depth
+    this.z = Math.random() * 20 - 30; // Start closer to the camera/screen
 
-    // Start with high random linear and angular velocities
+    // Thrown from the table upwards towards the player/camera, then falling back down
     this.vx = (Math.random() * 8 - 4) * 2;
-    this.vy = -(6 + Math.random() * 6); // Upwards initial toss
-    this.vz = (Math.random() * 4 - 2) * 2; // Dynamic depth velocity
+    this.vy = (Math.random() * 8 - 4) * 2; // Screen Y is balanced (no gravity in Y direction)
+    this.vz = -(6 + Math.random() * 6);    // Upward toss in Z direction (towards camera)
     
     this.rx = Math.random() * Math.PI * 2;
     this.ry = Math.random() * Math.PI * 2;
@@ -393,7 +393,7 @@ export class PhysicsDie {
       const py = this.y + ry_px;
       const pz = this.z + rz_px;
       
-      // Bottom floor
+      // Bottom wall
       if (py > height) {
         const pen = py - height;
         this.y -= pen;
@@ -402,11 +402,11 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vy);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: height - 4, age: 0, maxAge: 14, size: 28 });
+          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
-      // Top ceiling
+      // Top wall
       if (py < 0) {
         const pen = 0 - py;
         this.y += pen;
@@ -415,7 +415,7 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vy);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: px, y: 4, age: 0, maxAge: 14, size: 28 });
+          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -428,7 +428,7 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vx);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: 4, y: py, age: 0, maxAge: 14, size: 28 });
+          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
@@ -441,28 +441,29 @@ export class PhysicsDie {
           collided = true;
           const speed = Math.abs(this.vx);
           if (speed > maxVel) maxVel = speed;
-          this.sparks.push({ x: width - 4, y: py, age: 0, maxAge: 14, size: 28 });
+          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
         }
       }
       
-      // Back wall depth limits
-      if (pz < -80) {
-        const pen = -80 - pz;
-        this.z += pen;
-        const contact = { x: rx_px, y: ry_px, z: rz_px };
-        if (this.applyImpulse(contact, { x: 0, y: 0, z: 1 }, bounce)) {
-          collided = true;
-          const speed = Math.abs(this.vz);
-          if (speed > maxVel) maxVel = speed;
-        }
-      }
-      
-      // Front glass depth limits
-      if (pz > 80) {
-        const pen = pz - 80;
+      // Tabletop surface at the back (positive Z)
+      if (pz > 40) {
+        const pen = pz - 40;
         this.z -= pen;
         const contact = { x: rx_px, y: ry_px, z: rz_px };
         if (this.applyImpulse(contact, { x: 0, y: 0, z: -1 }, bounce)) {
+          collided = true;
+          const speed = Math.abs(this.vz);
+          if (speed > maxVel) maxVel = speed;
+          this.sparks.push({ x: px, y: py, age: 0, maxAge: 14, size: 28 });
+        }
+      }
+      
+      // Front glass ceiling limits (negative Z)
+      if (pz < -40) {
+        const pen = -40 - pz;
+        this.z += pen;
+        const contact = { x: rx_px, y: ry_px, z: rz_px };
+        if (this.applyImpulse(contact, { x: 0, y: 0, z: 1 }, bounce)) {
           collided = true;
           const speed = Math.abs(this.vz);
           if (speed > maxVel) maxVel = speed;
@@ -576,8 +577,8 @@ export class PhysicsDie {
       this.history.shift();
     }
 
-    // Apply linear gravity
-    this.vy += DICE_CONFIG.gravity;
+    // Apply linear gravity in Z (pulls the dice down onto the tabletop at positive Z depth)
+    this.vz += DICE_CONFIG.gravity;
 
     // Update positions
     this.x += this.vx;
@@ -609,17 +610,17 @@ export class PhysicsDie {
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy + this.vz * this.vz);
     const rotSpeed = Math.abs(this.vrx) + Math.abs(this.vry) + Math.abs(this.vrz);
 
-    // Check bottom contact
+    // Check table surface contact at positive Z depth
     const geo = getDieGeometry(this.sides);
     const size = DICE_CONFIG.size;
-    let lowestY = -Infinity;
+    let highestZ = -Infinity;
     geo.vertices.forEach((v) => {
       const r = rotate3D(v, this.rx, this.ry, this.rz);
-      const py = this.y + r.y * size * 0.85;
-      if (py > lowestY) lowestY = py;
+      const pz = this.z + r.z * size * 0.85;
+      if (pz > highestZ) highestZ = pz;
     });
 
-    if (speed < 0.22 && rotSpeed < 0.05 && lowestY >= height - 12) {
+    if (speed < 0.22 && rotSpeed < 0.05 && highestZ >= 40 - 12) {
       this.settled = true;
       this.vx = 0;
       this.vy = 0;

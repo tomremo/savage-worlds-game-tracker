@@ -63,15 +63,15 @@ describe('3D Dice Renderer & Physics Engine', () => {
       const proj1 = project3D(p1, 100, 100, 50);
       const proj2 = project3D(p2, 100, 100, 50);
 
-      // Distance factor formula is scale / (d + z) where d = 4.0.
-      // For p1: factor = 50 / (4.0 + 0) = 12.5. x = 100 + 1 * 12.5 = 112.5.
-      expect(proj1.x).toBeCloseTo(112.5);
-      expect(proj1.y).toBeCloseTo(112.5);
+      // Distance factor formula is scale / (1 + z / d) where d = 15.0.
+      // For p1: factor = 50 / (1 + 0/15) = 50. x = 100 + 1 * 50 = 150.
+      expect(proj1.x).toBeCloseTo(150);
+      expect(proj1.y).toBeCloseTo(150);
 
-      // For p2: factor = 50 / (4.0 + 1.0) = 10.0. x = 100 + 1 * 10 = 110.
+      // For p2: factor = 50 / (1 + 1/15) = 46.875. x = 100 + 1 * 46.875 = 146.875.
       // Higher Z (further back) must project closer to center (smaller scale factor)
-      expect(proj2.x).toBe(110);
-      expect(proj2.y).toBe(110);
+      expect(proj2.x).toBeCloseTo(146.875);
+      expect(proj2.y).toBeCloseTo(146.875);
     });
   });
 
