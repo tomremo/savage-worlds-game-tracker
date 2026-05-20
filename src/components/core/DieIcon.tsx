@@ -17,7 +17,6 @@ export default function DieIcon({ type, className = "", isActive = true }: DieIc
     // isActive: filled with currentColor, white text. !isActive: outlined currentColor, black text.
     const fill = isActive ? "currentColor" : "white";
     const stroke = "currentColor";
-    const textFill = isActive ? "white" : "currentColor";
 
     switch (type) {
       case 4:

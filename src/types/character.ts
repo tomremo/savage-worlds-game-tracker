@@ -37,4 +37,28 @@ export interface Character {
   maxPowerPoints: number;
   wealth: number;
   languages: string[];
+  runningDie?: string;
+
+  // Back page properties
+  specialAbilities?: { name: string; description: string; source?: string }[];
+  advances?: { rank: string; number: number; detail: string }[];
+  backgroundText?: string;
+
+  // Dynamic lists derived from JSON for rendering
+  weapons?: {
+    name: string;
+    damage: string;
+    range: string;
+    ap: string | number;
+    rof: string | number;
+    shots: string | number;
+    weight: string | number;
+    notes: string;
+  }[];
+  armor?: {
+    name: string;
+    weight: number;
+    notes: string;
+  }[];
 }
+

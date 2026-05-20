@@ -1,58 +1,38 @@
 'use client';
 
 import { useUIStore } from '@/stores/uiStore';
-import DerivedStats from './DerivedStats';
-import ArmorTable from './ArmorTable';
-import WeaponsTable from './WeaponsTable';
-import HindrancesAndEdges from './HindrancesAndEdges';
-import TraitList from './TraitList';
-import CombatState from './CombatState';
-import Image from 'next/image';
+import FrontPage from './FrontPage';
+import BackPage from './BackPage';
 
 export default function ActiveCore() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-[1400px] mx-auto pb-12">
-      {/* Column 1: Portrait, Attributes, Skills */}
-      <div className="space-y-6">
-        <div className="section-container aspect-[3/4] relative">
-          <Image 
-            src="/assets/portrait.png" 
-            alt="Character Portrait" 
-            fill 
-            className="object-cover"
-          />
-        </div>
-        <TraitList type="attributes" title="Attributes" />
-        <TraitList type="skills" title="Skills" />
-      </div>
+  const { viewMode } = useUIStore();
 
-      {/* Column 2: Derived, Armor, Gear */}
-      <div className="space-y-6">
-        <DerivedStats />
-        <ArmorTable />
-        <div className="section-container min-h-[200px]">
-          <div className="section-header">Gear</div>
-          <div className="p-2 text-[0.7rem] font-mono leading-tight">
-             Backpack (11.0), Climber's Kit (10), Healer's Kit (1), Adventurer's Kit (8), Potion of Minor Healing, Everburning Torch, Horse (0)...
-             <div className="mt-4 border-t border-black pt-2 flex justify-between">
-               <span>Wealth: 0gp</span>
-               <span>Weight: 38</span>
-             </div>
-          </div>
+  if (viewMode === 'back') {
+    return <BackPage />;
+  }
+
+  if (viewMode === 'dual') {
+    return (
+      <div className="flex flex-col xl:flex-row gap-8 items-start justify-center w-full">
+        {/* Front Page Sheet */}
+        <div className="w-full xl:w-1/2 max-w-[900px] xl:max-w-none border-4 border-black p-4 lg:p-6 parchment-paper shadow-2xl relative">
+          <h2 className="text-center font-extrabold font-serif uppercase tracking-widest text-lg text-black border-b-4 border-black pb-2 mb-6">
+            Page 1: Front Side
+          </h2>
+          <FrontPage />
+        </div>
+
+        {/* Back Page Sheet */}
+        <div className="w-full xl:w-1/2 max-w-[900px] xl:max-w-none border-4 border-black p-4 lg:p-6 parchment-paper shadow-2xl relative">
+          <h2 className="text-center font-extrabold font-serif uppercase tracking-widest text-lg text-black border-b-4 border-black pb-2 mb-6">
+            Page 2: Back Side
+          </h2>
+          <BackPage />
         </div>
       </div>
+    );
+  }
 
-      {/* Column 3: Damage, Hindrances, Edges */}
-      <div className="space-y-6">
-        <div className="section-container">
-          <div className="section-header">Damage</div>
-          <CombatState />
-        </div>
-        <HindrancesAndEdges />
-      </div>
-
-      {/* Full width bottom: Weapons */}
-      <WeaponsTable />
-    </div>
-  );
+  // Default: front page
+  return <FrontPage />;
 }

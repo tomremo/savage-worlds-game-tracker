@@ -42,13 +42,27 @@ const rollAcingDie = (sides: number): DieResult => {
   
   return { sides, initial, total, aces, rolls };
 };
+const rollStandardDie = (sides: number): DieResult => {
+  const roll = rollSingleDie(sides);
+  return {
+    sides,
+    initial: roll,
+    total: roll,
+    aces: 0,
+    rolls: [roll]
+  };
+};
 
-export const rollTrait = (request: TraitRollRequest, includeWildDie: boolean = false): TraitRollResult => {
-  const traitRes = rollAcingDie(request.dieType);
+export const rollTrait = (
+  request: TraitRollRequest,
+  includeWildDie: boolean = false,
+  allowAcing: boolean = true
+): TraitRollResult => {
+  const traitRes = allowAcing ? rollAcingDie(request.dieType) : rollStandardDie(request.dieType);
   let wildRes: DieResult | undefined;
   
   if (includeWildDie) {
-    wildRes = rollAcingDie(6); // Wild die is always d6
+    wildRes = allowAcing ? rollAcingDie(6) : rollStandardDie(6); // Wild die is always d6
   }
   
   const isCriticalFailure = includeWildDie && traitRes.initial === 1 && wildRes?.initial === 1;

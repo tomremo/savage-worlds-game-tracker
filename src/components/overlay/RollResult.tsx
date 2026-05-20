@@ -3,7 +3,7 @@
 import { useUIStore } from '@/stores/uiStore';
 import { useCharacterStore } from '@/stores/characterStore';
 import { calculateGlobalPenalty } from '@/engine/penalties';
-import DieIcon from '../core/DieIcon';
+import DieIcon, { DieType } from '../core/DieIcon';
 
 export default function RollResult() {
   const { rollOverlayVisible, activeRollResult, setRollOverlayVisible } = useUIStore();
@@ -11,16 +11,16 @@ export default function RollResult() {
 
   if (!rollOverlayVisible || !activeRollResult) return null;
 
-  const { name, result } = activeRollResult;
-  const penalty = calculateGlobalPenalty({
+  const { name, result, isRunningRoll } = activeRollResult;
+  const penalty = isRunningRoll ? 0 : calculateGlobalPenalty({
     wounds: character.wounds,
     fatigue: character.fatigue,
     isDistracted: character.statuses.includes('Distracted'),
   });
 
-  const finalTotal = result.finalResult + penalty;
-  const isSuccess = finalTotal >= 4;
-  const raises = Math.floor((finalTotal - 4) / 4);
+  const finalTotal = isRunningRoll ? result.finalResult : result.finalResult + penalty;
+  const isSuccess = !isRunningRoll && finalTotal >= 4;
+  const raises = !isRunningRoll ? Math.floor((finalTotal - 4) / 4) : 0;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
@@ -42,16 +42,17 @@ export default function RollResult() {
         {/* Main Result Display */}
         <div className="p-8 flex flex-col items-center justify-center border-b-2 border-black bg-gray-50">
           <div className="relative">
-            <span className={`text-8xl font-black leading-none ${result.isCriticalFailure ? 'text-red-600 animate-pulse' : 'text-black'}`}>
-              {result.isCriticalFailure ? '!!' : finalTotal}
+            <span className={`text-8xl font-black leading-none ${!isRunningRoll && result.isCriticalFailure ? 'text-red-600 animate-pulse' : 'text-black'}`}>
+              {isRunningRoll ? `+${finalTotal}` : (result.isCriticalFailure ? '!!' : finalTotal)}
             </span>
           </div>
           
           <div className={`mt-4 px-6 py-1 border-2 border-black font-black uppercase tracking-tighter text-xl ${
-            result.isCriticalFailure ? 'bg-red-600 text-white' : 
-            isSuccess ? 'bg-black text-white' : 'bg-white text-black'
+            (!isRunningRoll && result.isCriticalFailure) ? 'bg-red-600 text-white' : 
+            (isRunningRoll || isSuccess) ? 'bg-black text-white' : 'bg-white text-black'
           }`}>
-            {result.isCriticalFailure ? 'Critical Failure' : 
+            {isRunningRoll ? 'Running Movement' :
+             result.isCriticalFailure ? 'Critical Failure' : 
              isSuccess ? (raises > 0 ? `Success +${raises} Raise${raises > 1 ? 's' : ''}` : 'Success') : 
              'Failure'}
           </div>
@@ -62,8 +63,10 @@ export default function RollResult() {
           <div className="space-y-2">
             <div className="flex justify-between items-center pb-1 border-b border-gray-200">
               <div className="flex items-center gap-2">
-                <span className="text-[0.7rem] font-bold uppercase text-gray-500">Trait Die</span>
-                <DieIcon type={result.traitDie.sides as any} className="w-5 h-5 text-black" />
+                <span className="text-[0.7rem] font-bold uppercase text-gray-500">
+                  {isRunningRoll ? 'Running Die' : 'Trait Die'}
+                </span>
+                <DieIcon type={result.traitDie.sides as DieType} className="w-5 h-5 text-black" />
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono text-gray-400">({result.traitDie.rolls.join(' + ')})</span>
@@ -75,7 +78,7 @@ export default function RollResult() {
               <div className="flex justify-between items-center pb-1 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <span className="text-[0.7rem] font-bold uppercase text-gray-500">Wild Die</span>
-                  <DieIcon type={result.wildDie.sides as any} className="w-5 h-5 text-black" />
+                  <DieIcon type={result.wildDie.sides as DieType} className="w-5 h-5 text-black" />
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-gray-400">({result.wildDie.rolls.join(' + ')})</span>

@@ -40,5 +40,29 @@ export const edges: Edge[] = [
     requirements: { rank: 'Novice', attributes: { agility: 8 } },
     summary: 'Reduce multi-action penalty when using two weapons.',
     description: 'When a character with this Edge makes a Fighting attack with a weapon in each hand, he reduces the Multi-Action penalty by 2.'
+  },
+  {
+    id: 'quarry',
+    name: 'Quarry (Undead, Urban)',
+    type: 'Combat',
+    requirements: { rank: 'Seasoned' },
+    summary: 'Choose an additional enemy and terrain type for Favored Enemy/Terrain. / Pathfinder p60',
+    description: 'Choose an additional enemy and terrain type for your Favored Enemy and Favored Terrain abilities.'
+  },
+  {
+    id: 'trademark-weapon',
+    name: 'Trademark Weapon (Sword, Long)',
+    type: 'Combat',
+    requirements: { rank: 'Novice' },
+    summary: '+1 to Athletics (throwing), Fighting, or Shooting; +1 Parry. / Pathfinder p74',
+    description: '+1 to Athletics (throwing), Fighting, or Shooting total with a specific weapon; +1 Parry while weapon is readied.'
+  },
+  {
+    id: 'fleet-footed',
+    name: 'Fleet-Footed',
+    type: 'Background',
+    requirements: { rank: 'Novice' },
+    summary: 'Pace +2, increase running die one step. / Pathfinder p42',
+    description: 'Pace +2, increase running die one step.'
   }
 ];

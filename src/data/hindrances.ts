@@ -3,23 +3,23 @@ import { Hindrance } from '../types/resources';
 export const hindrances: Hindrance[] = [
   {
     id: 'driven',
-    name: 'Driven',
+    name: 'Driven (major, Design )',
     type: 'Major',
-    summary: 'Character is obsessed with a goal.',
-    description: 'A character with this Hindrance has a single-minded goal. It should be significant enough that it affects his life on a regular basis.'
+    summary: 'The hero\'s actions are an overriding desire that comes up frequently or causes peril for the hero and companions. / Pathfinder p27',
+    description: 'The hero\'s actions are an overriding desire that comes up frequently or causes peril.'
   },
   {
-    id: 'quirk',
-    name: 'Quirk',
+    id: 'quirk-lightweight',
+    name: 'Quirk (minor, Lightweight: -1 to vigor checks when drinking or smoking)',
     type: 'Minor',
-    summary: 'A minor personality oddity.',
-    description: 'Your character has some minor personality oddity. While usually harmless, it might occasionally cause a -1 penalty to social interaction rolls if the Quirk is besonders relevant.'
+    summary: 'The individual has some minor but persistent foible that often annoys others. / Pathfinder p30',
+    description: 'Minor personality oddity.'
   },
   {
-    id: 'clueless',
-    name: 'Clueless',
-    type: 'Major',
-    summary: '-2 to Common Knowledge and Notice rolls.',
-    description: 'Your hero doesn’t pay much attention to the world around him. He suffers a -2 penalty to Common Knowledge and Notice rolls.'
+    id: 'quirk-dogs',
+    name: 'Quirk (minor, Soft spot for dogs and always needs to stop and pet them.)',
+    type: 'Minor',
+    summary: 'The individual has some minor but persistent foible that often annoys others. / Pathfinder p30',
+    description: 'Minor personality oddity.'
   }
 ];

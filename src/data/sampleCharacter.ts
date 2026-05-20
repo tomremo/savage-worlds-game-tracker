@@ -1,41 +1,6 @@
 import { Character } from '../types/character';
+import { adaptSwadeCharacter } from './characterAdapter';
+import rawAstreus from './astreus.json';
+import { SwadeCharacter } from '../types/swade';
 
-export const astreusHelvetica: Character = {
-  id: 'astreus-helvetica',
-  name: 'Astreus Helvetica',
-  ancestry: 'Half-Elf',
-  className: 'Ranger',
-  rank: 'Novice',
-  experience: 0,
-  size: 0,
-  attributes: {
-    agility: { dieType: 8, modifier: 0 },
-    smarts: { dieType: 6, modifier: 0 },
-    spirit: { dieType: 6, modifier: 0 },
-    strength: { dieType: 8, modifier: 0 },
-    vigor: { dieType: 8, modifier: 0 },
-  },
-  skills: [
-    { skillId: 'athletics', trait: { dieType: 6, modifier: 0 } },
-    { skillId: 'common-knowledge', trait: { dieType: 4, modifier: 0 } },
-    { skillId: 'fighting', trait: { dieType: 8, modifier: 0 } },
-    { skillId: 'healing', trait: { dieType: 6, modifier: 0 } },
-    { skillId: 'notice', trait: { dieType: 6, modifier: 0 } },
-    { skillId: 'persuasion', trait: { dieType: 4, modifier: 0 } },
-    { skillId: 'shooting', trait: { dieType: 8, modifier: 0 } },
-    { skillId: 'stealth', trait: { dieType: 8, modifier: 0 } },
-    { skillId: 'survival', trait: { dieType: 8, modifier: 0 } },
-  ],
-  wounds: 0,
-  fatigue: 0,
-  bennies: 3,
-  statuses: [],
-  edgeIds: ['alertness', 'ambidextrous', 'quick', 'ranger', 'two-weapon-fighting'],
-  hindranceIds: ['driven', 'quirk'],
-  powerIds: [],
-  inventoryIds: ['composite-bow', 'bastard-sword', 'aegis-breastplate', 'leather-cap'],
-  currentPowerPoints: 0,
-  maxPowerPoints: 0,
-  wealth: 105,
-  languages: ['Common', 'Elven'],
-};
+export const astreusHelvetica: Character = adaptSwadeCharacter(rawAstreus as unknown as SwadeCharacter);

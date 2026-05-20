@@ -89,5 +89,22 @@ describe('Dice Engine', () => {
       expect(result.isCriticalFailure).toBe(true);
       vi.restoreAllMocks();
     });
+
+    it('should NOT ace when allowAcing is set to false', () => {
+      let callCount = 0;
+      vi.spyOn(crypto, 'getRandomValues').mockImplementation((buffer) => {
+        if (buffer instanceof Uint32Array) {
+          buffer[0] = 0xffffffff; // Would normally result in maximum (6) and trigger ace
+          callCount++;
+        }
+        return buffer;
+      });
+
+      const result = rollTrait({ dieType: 6, modifier: 0 }, false, false);
+      expect(result.traitDie.total).toBe(6);
+      expect(result.traitDie.aces).toBe(0);
+      expect(result.traitDie.rolls.length).toBe(1);
+      vi.restoreAllMocks();
+    });
   });
 });

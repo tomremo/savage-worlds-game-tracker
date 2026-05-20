@@ -47,7 +47,7 @@ describe('Character Store', () => {
   });
 
   it('should update character partials', () => {
-    useCharacterStore.getState().updateCharacter({ name: 'New Name', luck: 5 } as any);
+    useCharacterStore.getState().updateCharacter({ name: 'New Name' });
     expect(useCharacterStore.getState().character.name).toBe('New Name');
   });
 

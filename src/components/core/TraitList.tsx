@@ -2,6 +2,7 @@
 
 import { useCharacterStore } from '@/stores/characterStore';
 import { skills as skillDefinitions } from '@/data/skills';
+import { Trait } from '@/types/resources';
 import TraitItem from './TraitItem';
 
 export default function TraitList({ type, title }: { type: 'attributes' | 'skills'; title: string }) {
@@ -17,7 +18,7 @@ export default function TraitList({ type, title }: { type: 'attributes' | 'skill
         { 
           id: 'unskilled', 
           name: '(Unskilled)', 
-          trait: { dieType: 4, modifier: -2 } as any 
+          trait: { dieType: 4, modifier: -2 } as Trait 
         },
         ...character.skills.map(s => ({
           id: s.skillId,
@@ -29,9 +30,9 @@ export default function TraitList({ type, title }: { type: 'attributes' | 'skill
   return (
     <div className="section-container">
       <div className="section-header">{title}</div>
-      <div className="divide-y divide-dotted divide-gray-400">
+      <div className="divide-y divide-dashed divide-black bg-white">
         {traits.map(t => (
-          <TraitItem key={t.id} name={t.name} trait={t.trait} />
+          <TraitItem key={t.id} name={t.name} trait={t.trait} type={type} />
         ))}
       </div>
     </div>
