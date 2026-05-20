@@ -43,3 +43,5 @@ This document outlines the core technical and design preferences established dur
 ## 🪙 Token & Context Optimization
 - **Token Hygiene**: When explaining modifications, highlight only the exact line range changes using minimal git diffs or block snippets. Avoid restating or outputting large blocks of unchanged code.
 - **Targeted Vitest**: During development and verification runs, execute unit tests target-specifically (e.g., `npm run test -- <filename> --run`) to minimize command outputs and prevent log-flooding in the terminal context.
+- **Concise Outputs**: Keep all chat and artifact responses highly concise. Avoid conversational preambles, repetition, or over-explaining implementation details unless specifically requested.
+
