@@ -68,7 +68,7 @@ export default function DerivedStats() {
         </div>
 
         {/* Parry */}
-        <div className="flex-1 flex flex-col border-2 border-black bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+        <div className="relative group cursor-help flex-1 flex flex-col border-2 border-black bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
           <div className="bg-black text-white text-center font-bold text-xs uppercase py-1 border-b-2 border-black tracking-widest">
             Parry
           </div>
@@ -79,6 +79,31 @@ export default function DerivedStats() {
                 * Wild Attack
               </span>
             )}
+          </div>
+
+          {/* Parry Derivation Tooltip */}
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 w-48 bg-black text-white text-xs border-2 border-white shadow-[4px_4px_0px_rgba(0,0,0,1)] p-3 pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom z-50 font-mono text-[10px]">
+            <div className="font-black uppercase tracking-wider border-b border-gray-700 pb-1 mb-1.5 text-[9px] text-gray-300 font-sans">
+              Parry Derivation
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <span>Base Parry:</span>
+                <span>{baseParry}</span>
+              </div>
+              {modifiers.wildAttack && (
+                <div className="flex justify-between text-red-400">
+                  <span>Wild Attack:</span>
+                  <span className="font-bold">-2</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-gray-700 pt-1 mt-1 font-sans font-extrabold uppercase text-[10px] text-white">
+                <span>Current Parry:</span>
+                <span>{parry}</span>
+              </div>
+            </div>
+            {/* Tooltip Arrow */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black"></div>
           </div>
         </div>
 

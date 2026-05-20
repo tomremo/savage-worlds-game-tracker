@@ -55,8 +55,39 @@ export default function EncounterModifiers() {
         : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black'
     }`;
 
+  // Breakdown items for summary tooltips
+  interface ModItem {
+    label: string;
+    value: number;
+  }
+  const meleeBreakdown: ModItem[] = [];
+  if (modifiers.gangUp > 0) meleeBreakdown.push({ label: `Gang Up (+${modifiers.gangUp})`, value: modifiers.gangUp });
+  if (modifiers.wildAttack) meleeBreakdown.push({ label: 'Wild Attack', value: 2 });
+  if (modifiers.enemyVulnerable) meleeBreakdown.push({ label: 'Enemy Vulnerable', value: 2 });
+  if (lightPenalty !== 0) {
+    const label = modifiers.illumination === 'dim' ? 'Dim Light' : modifiers.illumination === 'dark' ? 'Darkness' : 'Pitch Black';
+    meleeBreakdown.push({ label, value: lightPenalty });
+  }
+  if (modifiers.customModifier !== 0) meleeBreakdown.push({ label: 'Custom Situational', value: modifiers.customModifier });
+
+  const rangedBreakdown: ModItem[] = [];
+  if (coverPenalty !== 0) {
+    const label = modifiers.cover.charAt(0).toUpperCase() + modifiers.cover.slice(1) + ' Cover';
+    rangedBreakdown.push({ label, value: coverPenalty });
+  }
+  if (rangePenalty !== 0) {
+    const label = modifiers.range.charAt(0).toUpperCase() + modifiers.range.slice(1) + ' Range';
+    rangedBreakdown.push({ label, value: rangePenalty });
+  }
+  if (modifiers.enemyVulnerable) rangedBreakdown.push({ label: 'Enemy Vulnerable', value: 2 });
+  if (lightPenalty !== 0) {
+    const label = modifiers.illumination === 'dim' ? 'Dim Light' : modifiers.illumination === 'dark' ? 'Darkness' : 'Pitch Black';
+    rangedBreakdown.push({ label, value: lightPenalty });
+  }
+  if (modifiers.customModifier !== 0) rangedBreakdown.push({ label: 'Custom Situational', value: modifiers.customModifier });
+
   return (
-    <div className="section-container bg-white text-black p-3 space-y-4">
+    <div className="section-container !overflow-visible bg-white text-black p-3 space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center border-b border-black pb-1.5 mb-1 select-none">
         <span className="text-[0.7rem] font-black uppercase tracking-wider">Combat Modifiers</span>
@@ -256,18 +287,64 @@ export default function EncounterModifiers() {
 
       {/* Bottom Summary: Computed Totals */}
       <div className="flex justify-between items-center gap-3 border-t-2 border-black pt-2.5 bg-gray-50 p-2 font-mono text-[0.7rem] select-none">
-        <div className="flex items-center gap-1.5">
+        {/* Melee Summary */}
+        <div className="relative group flex items-center gap-1.5 cursor-help">
           <span className="font-bold text-gray-500 uppercase text-[9px]">Melee:</span>
           <span className={`font-black text-xs ${meleeTotal > 0 ? 'text-green-700' : meleeTotal < 0 ? 'text-[#CC0000]' : 'text-black'}`}>
             {meleeTotal >= 0 ? `+${meleeTotal}` : meleeTotal}
           </span>
+
+          {/* Melee Details Tooltip */}
+          {meleeBreakdown.length > 0 && (
+            <div className="absolute bottom-full left-0 mb-2 w-48 bg-black text-white text-xs border-2 border-white shadow-[4px_4px_0px_rgba(0,0,0,1)] p-2.5 pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom-left z-50 font-mono text-[10px]">
+              <div className="font-black uppercase tracking-wider border-b border-gray-700 pb-1 mb-1.5 text-[9px] text-gray-300 font-sans">
+                Active Melee Modifiers
+              </div>
+              <div className="space-y-1">
+                {meleeBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>{item.label}:</span>
+                    <span className={item.value > 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+                      {item.value > 0 ? `+${item.value}` : item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-4 -mt-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black"></div>
+            </div>
+          )}
         </div>
+
         <div className="w-[1px] h-3.5 bg-gray-300"></div>
-        <div className="flex items-center gap-1.5">
+
+        {/* Ranged Summary */}
+        <div className="relative group flex items-center gap-1.5 cursor-help">
           <span className="font-bold text-gray-500 uppercase text-[9px]">Ranged:</span>
           <span className={`font-black text-xs ${rangedTotal > 0 ? 'text-green-700' : rangedTotal < 0 ? 'text-[#CC0000]' : 'text-black'}`}>
             {rangedTotal >= 0 ? `+${rangedTotal}` : rangedTotal}
           </span>
+
+          {/* Ranged Details Tooltip */}
+          {rangedBreakdown.length > 0 && (
+            <div className="absolute bottom-full right-0 mb-2 w-48 bg-black text-white text-xs border-2 border-white shadow-[4px_4px_0px_rgba(0,0,0,1)] p-2.5 pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 origin-bottom-right z-50 font-mono text-[10px]">
+              <div className="font-black uppercase tracking-wider border-b border-gray-700 pb-1 mb-1.5 text-[9px] text-gray-300 font-sans">
+                Active Ranged Modifiers
+              </div>
+              <div className="space-y-1">
+                {rangedBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>{item.label}:</span>
+                    <span className={item.value > 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+                      {item.value > 0 ? `+${item.value}` : item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full right-4 -mt-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>

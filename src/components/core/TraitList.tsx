@@ -28,7 +28,7 @@ export default function TraitList({ type, title }: { type: 'attributes' | 'skill
       ];
 
   return (
-    <div className="section-container">
+    <div className="section-container !overflow-visible">
       <div className="section-header">{title}</div>
       <div className="divide-y divide-dashed divide-black bg-white">
         {traits.map(t => (
