@@ -215,6 +215,16 @@ export const project3D = (
   };
 };
 
+// Centralized settings configuration for the 3D dice physics and rendering engine
+export const DICE_CONFIG = {
+  size: 65,               // Scale size of the dice (increased for high impact)
+  gravity: 0.5,           // Gravity acceleration force
+  bounce: -0.76,          // Bounciness / elasticity coefficient
+  linearDamping: 0.985,   // Linear speed friction decay
+  rotationalDamping: 0.975,// Rotational speed friction decay
+  duration: 1500,         // Maximum animation duration (ms)
+};
+
 // Dice Physical Instance
 export class PhysicsDie {
   x: number;
@@ -233,6 +243,9 @@ export class PhysicsDie {
   isWild: boolean;
   targetValue: number;
   settled: boolean;
+
+  // Maps face indices in geometry to fixed face numbers from 1 to sides
+  faceNumbers: { [faceIndex: number]: number } = {};
 
   constructor(sides: DieSides, isWild: boolean, targetValue: number, startX: number, startY: number) {
     this.sides = sides;
@@ -254,10 +267,56 @@ export class PhysicsDie {
     this.vrx = (Math.random() * 0.4 - 0.2) * 2.5;
     this.vry = (Math.random() * 0.4 - 0.2) * 2.5;
     this.vrz = (Math.random() * 0.4 - 0.2) * 2.5;
+
+    // Pre-calculate locked numbers on the faces
+    this.initializeFaceNumbers();
+  }
+
+  // Maps numbers 1 to sides to specific faces so they rotate realistically
+  initializeFaceNumbers() {
+    const geo = getDieGeometry(this.sides);
+
+    // 1. Calculate normal Z for each face at zero rotation (rest alignment)
+    const faceNormals = geo.faces.map((face, index) => {
+      const v0 = geo.vertices[face[0]];
+      const v1 = geo.vertices[face[1]];
+      const v2 = geo.vertices[face[2]];
+      
+      const nx = (v1.y - v0.y) * (v2.z - v0.z) - (v1.z - v0.z) * (v2.y - v0.y);
+      const ny = (v1.z - v0.z) * (v2.x - v0.x) - (v1.x - v0.x) * (v2.z - v0.z);
+      const nz = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
+      
+      const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      const normalZ = length > 0 ? nz / length : 0;
+      return { index, normalZ };
+    });
+
+    // 2. Find frontmost face index (most negative normalZ) at zero rotation
+    faceNormals.sort((a, b) => a.normalZ - b.normalZ);
+    const frontmostFaceIndex = faceNormals[0].index;
+
+    // 3. Assign targetValue to this frontmost face
+    this.faceNumbers[frontmostFaceIndex] = this.targetValue;
+
+    // 4. Distribute the remaining numbers sequentially to the other faces
+    const availableNumbers = Array.from({ length: this.sides }, (_, i) => i + 1)
+      .filter((n) => n !== this.targetValue);
+
+    let numberIdx = 0;
+    geo.faces.forEach((_, index) => {
+      if (index !== frontmostFaceIndex) {
+        this.faceNumbers[index] = availableNumbers[numberIdx++] || 1;
+      }
+    });
   }
 
   // Update physical coordinates
-  update(width: number, height: number, gravity: number = 0.5, bounce: number = -0.65) {
+  update(
+    width: number, 
+    height: number, 
+    gravity: number = DICE_CONFIG.gravity, 
+    bounce: number = DICE_CONFIG.bounce
+  ) {
     if (this.settled) return;
 
     // Apply linear physics
@@ -271,7 +330,7 @@ export class PhysicsDie {
     this.rz += this.vrz;
 
     // Viewport Boundary Bounce (X limits)
-    const padding = 45;
+    const padding = DICE_CONFIG.size * 0.75;
     if (this.x < padding) {
       this.x = padding;
       this.vx *= bounce;
@@ -296,13 +355,13 @@ export class PhysicsDie {
     }
 
     // Linear friction damping
-    this.vx *= 0.985;
-    this.vy *= 0.985;
+    this.vx *= DICE_CONFIG.linearDamping;
+    this.vy *= DICE_CONFIG.linearDamping;
 
     // Rotational friction damping
-    this.vrx *= 0.975;
-    this.vry *= 0.975;
-    this.vrz *= 0.975;
+    this.vrx *= DICE_CONFIG.rotationalDamping;
+    this.vry *= DICE_CONFIG.rotationalDamping;
+    this.vrz *= DICE_CONFIG.rotationalDamping;
 
     // Check if the die has come to rest (extremely low velocities)
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
@@ -316,8 +375,7 @@ export class PhysicsDie {
       this.vry = 0;
       this.vrz = 0;
 
-      // Align rotation matrix so that the top face matches the target outcome
-      // We force rotation to a clean, readable angle (facing forward toward the reader)
+      // Force resting rotation angles to face the camera flush
       this.rx = 0;
       this.ry = 0;
       this.rz = 0;
@@ -325,7 +383,7 @@ export class PhysicsDie {
   }
 
   // Draw die on HTML5 canvas
-  draw(ctx: CanvasRenderingContext2D, size: number = 32) {
+  draw(ctx: CanvasRenderingContext2D, size: number = DICE_CONFIG.size) {
     const geo = getDieGeometry(this.sides);
     
     // Rotate and project all vertices
@@ -395,36 +453,10 @@ export class PhysicsDie {
         ctx.lineJoin = 'round';
         ctx.stroke();
 
-        // If the die is settled, render the exact final numeric score on the frontmost face
-        // Otherwise, render a rotating sequence of numbers based on rotation ticks
-        if (this.settled) {
-          // Only draw the number on the most visible face (highest normalZ index)
-          const isFrontmost = index === faceOrder[faceOrder.length - 1].index;
-          if (isFrontmost) {
-            // Find center of the polygon
-            let cx = 0, cy = 0;
-            face.forEach((vIdx) => {
-              cx += projectedVertices[vIdx].x;
-              cy += projectedVertices[vIdx].y;
-            });
-            cx /= face.length;
-            cy /= face.length;
-
-            ctx.fillStyle = '#000000';
-            ctx.font = `black 900 ${size * 0.45}px Times New Roman, Georgia, serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
-            // Highlight aces/max results in red, normal numbers in black
-            if (this.targetValue === this.sides) {
-              ctx.fillStyle = '#CC0000'; // Brutalist Red Ace
-            }
-            ctx.fillText(this.targetValue.toString(), cx, cy);
-          }
-        } else {
-          // Tumbling face numerical markers (simulated scrolling during physical rotation)
-          const faceNum = ((index + Math.floor(this.rx * 5)) % this.sides) + 1;
-          
+        // Draw numbers physically locked to each face (spin & settled states)
+        const faceNum = this.faceNumbers[index];
+        if (faceNum !== undefined) {
+          // Find center coordinates of the polygon face
           let cx = 0, cy = 0;
           face.forEach((vIdx) => {
             cx += projectedVertices[vIdx].x;
@@ -433,11 +465,28 @@ export class PhysicsDie {
           cx /= face.length;
           cy /= face.length;
 
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // Semitransparent during spin
-          ctx.font = `italic 900 ${size * 0.35}px Inter, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(faceNum.toString(), cx, cy);
+          ctx.fillStyle = '#000000';
+          
+          if (this.settled) {
+            // Draw only on frontmost face when settled for maximum readability
+            const isFrontmost = index === faceOrder[faceOrder.length - 1].index;
+            if (isFrontmost) {
+              ctx.font = `black 900 ${size * 0.45}px Times New Roman, Georgia, serif`;
+              if (faceNum === this.sides) {
+                ctx.fillStyle = '#CC0000'; // Brutalist Red Ace
+              }
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(faceNum.toString(), cx, cy);
+            }
+          } else {
+            // Always show numbers on faces during rotation, fully synced to 3D movement
+            ctx.font = `black 900 ${size * 0.38}px Times New Roman, Georgia, serif`;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; // High-contrast opacity
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(faceNum.toString(), cx, cy);
+          }
         }
       }
     });
