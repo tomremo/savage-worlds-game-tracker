@@ -1,11 +1,23 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useCharacterStore } from '@/stores/characterStore';
 import ActiveCore from '@/components/core/ActiveCore';
 import RollResult from '@/components/overlay/RollResult';
 
 export default function Home() {
   const { viewMode, setViewMode } = useUIStore();
+  const characterName = useCharacterStore((state) => state.character?.name);
+
+  useEffect(() => {
+    const appName = 'Savage Worlds Game Tracker';
+    if (characterName) {
+      document.title = `${appName} - ${characterName}`;
+    } else {
+      document.title = appName;
+    }
+  }, [characterName]);
 
   return (
     <main className="relative min-h-screen bg-[#1a120b] p-4 lg:p-8 flex flex-col items-center justify-start">

@@ -16,17 +16,11 @@ export default function ActiveCore() {
       <div className="flex flex-col xl:flex-row gap-8 items-start justify-center w-full">
         {/* Front Page Sheet */}
         <div className="w-full xl:w-1/2 max-w-[900px] xl:max-w-none border-4 border-black p-4 lg:p-6 parchment-paper shadow-2xl relative">
-          <h2 className="text-center font-extrabold font-serif uppercase tracking-widest text-lg text-black border-b-4 border-black pb-2 mb-6">
-            Page 1: Front Side
-          </h2>
           <FrontPage />
         </div>
 
         {/* Back Page Sheet */}
         <div className="w-full xl:w-1/2 max-w-[900px] xl:max-w-none border-4 border-black p-4 lg:p-6 parchment-paper shadow-2xl relative">
-          <h2 className="text-center font-extrabold font-serif uppercase tracking-widest text-lg text-black border-b-4 border-black pb-2 mb-6">
-            Page 2: Back Side
-          </h2>
           <BackPage />
         </div>
       </div>
