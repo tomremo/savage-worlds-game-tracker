@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDieGeometry, rotate3D, project3D, PhysicsDie } from '../diceRenderer';
+import { getDieGeometry, rotate3D, project3D, PhysicsDie, DieSides } from '../diceRenderer';
 
 describe('3D Dice Renderer & Physics Engine', () => {
   describe('getDieGeometry', () => {
@@ -87,6 +87,37 @@ describe('3D Dice Renderer & Physics Engine', () => {
       expect(Math.abs(die.vy)).toBeGreaterThan(0);
     });
 
+    it('should assign physically mapped face numbers correctly', () => {
+      const sidesList: DieSides[] = [4, 6, 8, 10, 12];
+      
+      sidesList.forEach(sides => {
+        const targetValue = Math.floor(Math.random() * sides) + 1;
+        const die = new PhysicsDie(sides, false, targetValue, 100, 100);
+        
+        // Assert faceNumbers exists and has correct number of elements matching the faces count in geometry
+        const geometry = getDieGeometry(sides);
+        const expectedFaceCount = geometry.faces.length;
+        
+        expect(Object.keys(die.faceNumbers).length).toBe(expectedFaceCount);
+        
+        // Assert targetValue is mapped to one of the faces
+        const mappedValues = Object.values(die.faceNumbers);
+        expect(mappedValues).toContain(targetValue);
+        
+        // Assert that every value is between 1 and sides
+        mappedValues.forEach(val => {
+          expect(val).toBeGreaterThanOrEqual(1);
+          expect(val).toBeLessThanOrEqual(sides);
+        });
+
+        // Assert all face numbers (1 to sides) are assigned without duplicates (if applicable for shapes where faces matches sides)
+        if (expectedFaceCount === sides) {
+          const uniqueValues = new Set(mappedValues);
+          expect(uniqueValues.size).toBe(sides);
+        }
+      });
+    });
+
     it('should update physical coordinates and damp velocity over time', () => {
       const die = new PhysicsDie(8, true, 4, 150, 80);
 
@@ -97,7 +128,7 @@ describe('3D Dice Renderer & Physics Engine', () => {
       expect(die.y).not.toBe(80);
 
       // Running updates repeatedly should reduce velocities (due to friction damping)
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 500; i++) {
         die.update(300, 200, 0.5, -0.6);
       }
 

@@ -6,7 +6,7 @@ import { useCharacterStore } from '@/stores/characterStore';
 import { calculateUnifiedModifiers } from '@/engine/modifiers';
 import DieIcon, { DieType } from '../core/DieIcon';
 import { playDiceRollSound } from '@/engine/diceSound';
-import { PhysicsDie, DieSides } from '@/engine/diceRenderer';
+import { PhysicsDie, DieSides, DICE_CONFIG } from '@/engine/diceRenderer';
 
 export default function RollResult() {
   const { rollOverlayVisible, activeRollResult, setRollOverlayVisible, modifiers, enable3dDice } = useUIStore();
@@ -46,29 +46,48 @@ export default function RollResult() {
     const dice: PhysicsDie[] = [];
     const result = activeRollResult.result;
 
-    // Trait die
-    dice.push(new PhysicsDie(
-      result.traitDie.sides as DieSides,
-      false,
-      result.traitDie.initial,
-      canvasWidth * 0.3 + (Math.random() * 20 - 10),
-      40
-    ));
+    // Trait die rolls (including exploding aces)
+    result.traitDie.rolls.forEach((val, idx) => {
+      // Offset starting position per additional ace to prevent perfect overlap
+      const offsetFactor = idx - (result.traitDie.rolls.length - 1) / 2;
+      const startX = canvasWidth * 0.3 + offsetFactor * 30 + (Math.random() * 20 - 10);
+      const startY = 40 + (Math.random() * 10 - 5);
+      const die = new PhysicsDie(
+        result.traitDie.sides as DieSides,
+        false,
+        val,
+        startX,
+        startY
+      );
+      // Scatter velocity dynamically
+      die.vx += offsetFactor * 2;
+      dice.push(die);
+    });
 
-    // Wild die
-    if (result.wildDie) {
-      dice.push(new PhysicsDie(
-        result.wildDie.sides as DieSides,
-        true,
-        result.wildDie.initial,
-        canvasWidth * 0.7 + (Math.random() * 20 - 10),
-        40
-      ));
+    // Wild die rolls (including exploding aces)
+    const wildDie = result.wildDie;
+    if (wildDie) {
+      wildDie.rolls.forEach((val, idx) => {
+        // Offset starting position per additional ace to prevent perfect overlap
+        const offsetFactor = idx - (wildDie.rolls.length - 1) / 2;
+        const startX = canvasWidth * 0.7 + offsetFactor * 30 + (Math.random() * 20 - 10);
+        const startY = 40 + (Math.random() * 10 - 5);
+        const die = new PhysicsDie(
+          wildDie.sides as DieSides,
+          true,
+          val,
+          startX,
+          startY
+        );
+        // Scatter velocity dynamically
+        die.vx += offsetFactor * 2;
+        dice.push(die);
+      });
     }
 
     let animationFrameId: number;
     const startTime = Date.now();
-    const duration = 1200; // 1.2 seconds duration
+    const duration = DICE_CONFIG.duration;
 
     const loop = () => {
       // Clear canvas with brutalist background
@@ -94,8 +113,8 @@ export default function RollResult() {
       // Update and draw each die
       let allSettled = true;
       dice.forEach((die) => {
-        die.update(canvasWidth, canvasHeight, 0.45, -0.6);
-        die.draw(ctx, 42);
+        die.update(canvasWidth, canvasHeight, DICE_CONFIG.gravity, DICE_CONFIG.bounce);
+        die.draw(ctx, DICE_CONFIG.size);
         if (!die.settled) {
           allSettled = false;
         }
@@ -135,7 +154,7 @@ export default function RollResult() {
           d.rx = 0;
           d.ry = 0;
           d.rz = 0;
-          d.draw(ctx, 42);
+          d.draw(ctx, DICE_CONFIG.size);
         });
         setIsAnimating(false);
       } else {
