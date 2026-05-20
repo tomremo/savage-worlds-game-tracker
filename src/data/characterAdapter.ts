@@ -76,16 +76,18 @@ export const adaptSwadeCharacter = (raw: SwadeCharacter): Character => {
     vigor: mapAttribute(findAttribute('vigor'))
   };
 
-  // Map skills list
-  const skills = raw.skills?.map(s => {
-    const skillId = mapSkillId(s.name);
-    const dieType = (s.dieValue || 4) as DieType;
-    const modifier = s.mod || 0;
-    return {
-      skillId,
-      trait: { dieType, modifier }
-    };
-  }) || [];
+  // Map skills list and filter out '(Unskilled)'
+  const skills = raw.skills
+    ?.map(s => {
+      const skillId = mapSkillId(s.name);
+      const dieType = (s.dieValue || 4) as DieType;
+      const modifier = s.mod || 0;
+      return {
+        skillId,
+        trait: { dieType, modifier }
+      };
+    })
+    .filter(s => s.skillId !== 'unskilled') || [];
 
   // Map special abilities
   const specialAbilities = raw.abilities?.map(a => {
