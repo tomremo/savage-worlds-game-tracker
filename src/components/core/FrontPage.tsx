@@ -12,6 +12,8 @@ import HindrancesAndEdges from './HindrancesAndEdges';
 import WeaponsTable from './WeaponsTable';
 import VitalHeader from '../header/VitalHeader';
 import PowersTracker from './PowersTracker';
+import SessionLogTracker from './SessionLogTracker';
+import AdventureJournal from './AdventureJournal';
 import DraggableModule from './DraggableModule';
 import { useUIStore, FrontModuleId, FrontColumnId } from '@/stores/uiStore';
 
@@ -68,6 +70,10 @@ export default function FrontPage() {
         return <WeaponsTable />;
       case 'powers':
         return <PowersTracker />;
+      case 'session_log':
+        return <SessionLogTracker />;
+      case 'adventure_journal':
+        return <AdventureJournal />;
       default:
         return null;
     }
@@ -97,6 +103,10 @@ export default function FrontPage() {
         return 'Weapons & Attacks Table';
       case 'powers':
         return 'Power Points & Powers';
+      case 'session_log':
+        return 'Session Activity Log';
+      case 'adventure_journal':
+        return 'Adventure Journal & Notes';
       default:
         return modId;
     }

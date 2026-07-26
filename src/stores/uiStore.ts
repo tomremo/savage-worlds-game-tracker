@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { TraitRollResult } from '@/engine/dice';
+import { useLogStore } from './logStore';
 
 export type TabType = 'skills' | 'abilities' | 'inventory' | 'powers' | 'log' | 'history';
 export type ViewModeType = 'front' | 'back' | 'dual';
@@ -16,7 +17,9 @@ export type FrontModuleId =
   | 'modifiers'
   | 'hindrances_edges'
   | 'weapons'
-  | 'powers';
+  | 'powers'
+  | 'session_log'
+  | 'adventure_journal';
 
 export type FrontColumnId = 'col1' | 'col2' | 'col3' | 'bottom';
 
@@ -30,7 +33,7 @@ export interface FrontLayout {
 export const DEFAULT_FRONT_LAYOUT: FrontLayout = {
   col1: ['portrait', 'attributes', 'skills'],
   col2: ['derived', 'armor', 'gear'],
-  col3: ['powers', 'damage', 'modifiers', 'hindrances_edges'],
+  col3: ['powers', 'session_log', 'damage', 'modifiers', 'hindrances_edges'],
   bottom: ['weapons'],
 };
 
@@ -39,7 +42,9 @@ export type BackModuleId =
   | 'background'
   | 'more_edges'
   | 'advances'
-  | 'powers';
+  | 'powers'
+  | 'session_log'
+  | 'adventure_journal';
 
 export type BackColumnId = 'col1' | 'col2';
 
@@ -49,8 +54,8 @@ export interface BackLayout {
 }
 
 export const DEFAULT_BACK_LAYOUT: BackLayout = {
-  col1: ['powers', 'special_abilities', 'background'],
-  col2: ['more_edges', 'advances'],
+  col1: ['powers', 'adventure_journal', 'special_abilities', 'background'],
+  col2: ['session_log', 'more_edges', 'advances'],
 };
 
 export interface CombatModifiers {
@@ -125,6 +130,8 @@ const ALL_FRONT_MODULES: FrontModuleId[] = [
   'hindrances_edges',
   'weapons',
   'powers',
+  'session_log',
+  'adventure_journal',
 ];
 
 const ALL_BACK_MODULES: BackModuleId[] = [
@@ -133,6 +140,8 @@ const ALL_BACK_MODULES: BackModuleId[] = [
   'more_edges',
   'advances',
   'powers',
+  'session_log',
+  'adventure_journal',
 ];
 
 function sanitizeFrontLayout(layout?: FrontLayout): FrontLayout {
@@ -192,7 +201,30 @@ export const useUIStore = create<UIState>()(
       toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
       setRollOverlayVisible: (visible) => set({ rollOverlayVisible: visible }),
       setRollResult: (result) =>
-        set({ activeRollResult: result || undefined, rollOverlayVisible: !!result }),
+        set(() => {
+          if (result) {
+            const nameLower = result.name.toLowerCase();
+            const isAttack =
+              nameLower.includes('fighting') ||
+              nameLower.includes('shooting') ||
+              nameLower.includes('attack') ||
+              nameLower.includes('athletics');
+            const type = isAttack ? 'attacks_made' : 'trait_rolls';
+            const detailText = result.result
+              ? `Final Result: ${result.result.finalResult || 0}${
+                  result.result.isCriticalFailure ? ' (CRITICAL FAILURE!)' : ''
+                }`
+              : 'Roll initiated';
+
+            useLogStore.getState().addLogEntry({
+              category: 'mechanic',
+              type,
+              title: `Dice Roll: ${result.name}`,
+              details: detailText,
+            });
+          }
+          return { activeRollResult: result || undefined, rollOverlayVisible: !!result };
+        }),
       updateModifier: (key, value) =>
         set((state) => ({
           modifiers: { ...state.modifiers, [key]: value },
