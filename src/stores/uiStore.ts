@@ -1,8 +1,57 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { TraitRollResult } from '@/engine/dice';
 
 export type TabType = 'skills' | 'abilities' | 'inventory' | 'powers' | 'log' | 'history';
 export type ViewModeType = 'front' | 'back' | 'dual';
+
+export type FrontModuleId =
+  | 'portrait'
+  | 'attributes'
+  | 'skills'
+  | 'derived'
+  | 'armor'
+  | 'gear'
+  | 'damage'
+  | 'modifiers'
+  | 'hindrances_edges'
+  | 'weapons'
+  | 'powers';
+
+export type FrontColumnId = 'col1' | 'col2' | 'col3' | 'bottom';
+
+export interface FrontLayout {
+  col1: FrontModuleId[];
+  col2: FrontModuleId[];
+  col3: FrontModuleId[];
+  bottom: FrontModuleId[];
+}
+
+export const DEFAULT_FRONT_LAYOUT: FrontLayout = {
+  col1: ['portrait', 'attributes', 'skills'],
+  col2: ['derived', 'armor', 'gear'],
+  col3: ['powers', 'damage', 'modifiers', 'hindrances_edges'],
+  bottom: ['weapons'],
+};
+
+export type BackModuleId =
+  | 'special_abilities'
+  | 'background'
+  | 'more_edges'
+  | 'advances'
+  | 'powers';
+
+export type BackColumnId = 'col1' | 'col2';
+
+export interface BackLayout {
+  col1: BackModuleId[];
+  col2: BackModuleId[];
+}
+
+export const DEFAULT_BACK_LAYOUT: BackLayout = {
+  col1: ['powers', 'special_abilities', 'background'],
+  col2: ['more_edges', 'advances'],
+};
 
 export interface CombatModifiers {
   gangUp: number;             // Melee: 0 to 4 (+1 per level, max +4)
@@ -33,32 +82,187 @@ export interface RollResultInfo {
 interface UIState {
   activeTab: TabType;
   viewMode: ViewModeType;
+  isEditMode: boolean;
   rollOverlayVisible: boolean;
   activeRollResult?: RollResultInfo;
   modifiers: CombatModifiers;
   enable3dDice: boolean;
+  frontLayout: FrontLayout;
+  backLayout: BackLayout;
   setActiveTab: (tab: TabType) => void;
   setViewMode: (mode: ViewModeType) => void;
+  setIsEditMode: (edit: boolean) => void;
+  toggleEditMode: () => void;
   setRollOverlayVisible: (visible: boolean) => void;
   setRollResult: (result: RollResultInfo | null) => void;
   updateModifier: <K extends keyof CombatModifiers>(key: K, value: CombatModifiers[K]) => void;
   resetModifiers: () => void;
   setEnable3dDice: (enabled: boolean) => void;
+  moveFrontModule: (
+    sourceCol: FrontColumnId,
+    sourceIndex: number,
+    targetCol: FrontColumnId,
+    targetIndex: number
+  ) => void;
+  moveBackModule: (
+    sourceCol: BackColumnId,
+    sourceIndex: number,
+    targetCol: BackColumnId,
+    targetIndex: number
+  ) => void;
+  resetLayouts: () => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  activeTab: 'skills',
-  viewMode: 'front',
-  rollOverlayVisible: false,
-  enable3dDice: true,
-  modifiers: { ...DEFAULT_MODIFIERS },
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setViewMode: (mode) => set({ viewMode: mode }),
-  setRollOverlayVisible: (visible) => set({ rollOverlayVisible: visible }),
-  setRollResult: (result) => set({ activeRollResult: result || undefined, rollOverlayVisible: !!result }),
-  updateModifier: (key, value) => set((state) => ({
-    modifiers: { ...state.modifiers, [key]: value }
-  })),
-  resetModifiers: () => set({ modifiers: { ...DEFAULT_MODIFIERS } }),
-  setEnable3dDice: (enabled) => set({ enable3dDice: enabled }),
-}));
+const ALL_FRONT_MODULES: FrontModuleId[] = [
+  'portrait',
+  'attributes',
+  'skills',
+  'derived',
+  'armor',
+  'gear',
+  'damage',
+  'modifiers',
+  'hindrances_edges',
+  'weapons',
+  'powers',
+];
+
+const ALL_BACK_MODULES: BackModuleId[] = [
+  'special_abilities',
+  'background',
+  'more_edges',
+  'advances',
+  'powers',
+];
+
+function sanitizeFrontLayout(layout?: FrontLayout): FrontLayout {
+  if (!layout || !layout.col1 || !layout.col2 || !layout.col3 || !layout.bottom) {
+    return { ...DEFAULT_FRONT_LAYOUT };
+  }
+  const presentModules = new Set<FrontModuleId>([
+    ...layout.col1,
+    ...layout.col2,
+    ...layout.col3,
+    ...layout.bottom,
+  ]);
+  if (presentModules.size !== ALL_FRONT_MODULES.length) {
+    return { ...DEFAULT_FRONT_LAYOUT };
+  }
+  for (const mod of ALL_FRONT_MODULES) {
+    if (!presentModules.has(mod)) {
+      return { ...DEFAULT_FRONT_LAYOUT };
+    }
+  }
+  return layout;
+}
+
+function sanitizeBackLayout(layout?: BackLayout): BackLayout {
+  if (!layout || !layout.col1 || !layout.col2) {
+    return { ...DEFAULT_BACK_LAYOUT };
+  }
+  const presentModules = new Set<BackModuleId>([
+    ...layout.col1,
+    ...layout.col2,
+  ]);
+  if (presentModules.size !== ALL_BACK_MODULES.length) {
+    return { ...DEFAULT_BACK_LAYOUT };
+  }
+  for (const mod of ALL_BACK_MODULES) {
+    if (!presentModules.has(mod)) {
+      return { ...DEFAULT_BACK_LAYOUT };
+    }
+  }
+  return layout;
+}
+
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      activeTab: 'skills',
+      viewMode: 'front',
+      isEditMode: false,
+      rollOverlayVisible: false,
+      enable3dDice: true,
+      modifiers: { ...DEFAULT_MODIFIERS },
+      frontLayout: { ...DEFAULT_FRONT_LAYOUT },
+      backLayout: { ...DEFAULT_BACK_LAYOUT },
+      setActiveTab: (tab) => set({ activeTab: tab }),
+      setViewMode: (mode) => set({ viewMode: mode }),
+      setIsEditMode: (edit) => set({ isEditMode: edit }),
+      toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
+      setRollOverlayVisible: (visible) => set({ rollOverlayVisible: visible }),
+      setRollResult: (result) =>
+        set({ activeRollResult: result || undefined, rollOverlayVisible: !!result }),
+      updateModifier: (key, value) =>
+        set((state) => ({
+          modifiers: { ...state.modifiers, [key]: value },
+        })),
+      resetModifiers: () => set({ modifiers: { ...DEFAULT_MODIFIERS } }),
+      setEnable3dDice: (enabled) => set({ enable3dDice: enabled }),
+      moveFrontModule: (sourceCol, sourceIndex, targetCol, targetIndex) =>
+        set((state) => {
+          const currentLayout = sanitizeFrontLayout(state.frontLayout);
+          const nextLayout: FrontLayout = {
+            col1: [...currentLayout.col1],
+            col2: [...currentLayout.col2],
+            col3: [...currentLayout.col3],
+            bottom: [...currentLayout.bottom],
+          };
+
+          if (
+            sourceIndex < 0 ||
+            sourceIndex >= nextLayout[sourceCol].length
+          ) {
+            return state;
+          }
+
+          const [movedItem] = nextLayout[sourceCol].splice(sourceIndex, 1);
+          const clampedTargetIndex = Math.max(
+            0,
+            Math.min(targetIndex, nextLayout[targetCol].length)
+          );
+          nextLayout[targetCol].splice(clampedTargetIndex, 0, movedItem);
+
+          return { frontLayout: nextLayout };
+        }),
+      moveBackModule: (sourceCol, sourceIndex, targetCol, targetIndex) =>
+        set((state) => {
+          const currentLayout = sanitizeBackLayout(state.backLayout);
+          const nextLayout: BackLayout = {
+            col1: [...currentLayout.col1],
+            col2: [...currentLayout.col2],
+          };
+
+          if (
+            sourceIndex < 0 ||
+            sourceIndex >= nextLayout[sourceCol].length
+          ) {
+            return state;
+          }
+
+          const [movedItem] = nextLayout[sourceCol].splice(sourceIndex, 1);
+          const clampedTargetIndex = Math.max(
+            0,
+            Math.min(targetIndex, nextLayout[targetCol].length)
+          );
+          nextLayout[targetCol].splice(clampedTargetIndex, 0, movedItem);
+
+          return { backLayout: nextLayout };
+        }),
+      resetLayouts: () =>
+        set({
+          frontLayout: { ...DEFAULT_FRONT_LAYOUT },
+          backLayout: { ...DEFAULT_BACK_LAYOUT },
+        }),
+    }),
+    {
+      name: 'savage-ui-storage',
+      partialize: (state) => ({
+        isEditMode: state.isEditMode,
+        frontLayout: sanitizeFrontLayout(state.frontLayout),
+        backLayout: sanitizeBackLayout(state.backLayout),
+        enable3dDice: state.enable3dDice,
+      }),
+    }
+  )
+);

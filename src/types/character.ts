@@ -30,7 +30,9 @@ export interface Character {
   edgeIds: string[];
   hindranceIds: string[];
   powerIds: string[];
+  activePowerIds?: string[];
   inventoryIds: string[];
+
 
   // For active tracking
   currentPowerPoints: number;
