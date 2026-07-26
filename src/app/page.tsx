@@ -83,10 +83,14 @@ export default function Home() {
           Mode: {isEditMode ? 'CUSTOMIZE LAYOUT' : 'READ-ONLY'}
         </button>
         {isEditMode && (
-          <button 
-            onClick={resetLayouts}
+          <button
+            onClick={() => {
+              if (window.confirm('Reset all module layout positions, column widths, and custom heights back to default?')) {
+                resetLayouts();
+              }
+            }}
             className="px-3 py-2 border-2 border-black font-extrabold font-serif text-[10px] sm:text-xs uppercase tracking-widest bg-yellow-400 text-black hover:bg-yellow-500 transition-all shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_rgba(0,0,0,1)] cursor-pointer"
-            title="Restore default module layout"
+            title="Restore default module positions, column widths, and custom heights"
           >
             Reset Layout
           </button>
@@ -95,7 +99,7 @@ export default function Home() {
 
       {isEditMode && (
         <div className="w-full max-w-[1100px] mb-4 p-2 bg-red-950/90 border-2 border-red-500 text-red-100 text-center text-xs font-serif uppercase tracking-widest select-none z-20 shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-          <span className="font-bold text-yellow-400">⚡ CUSTOMIZE LAYOUT MODE ACTIVE:</span> Drag modules by their header handles or use the action buttons to reorder sections.
+          <span className="font-bold text-yellow-400">⚡ CUSTOMIZE LAYOUT MODE ACTIVE:</span> Drag header handles to reorder sections. Drag right/bottom edges or corner handles to resize column span (1-3 cols) &amp; height (32px grid units). Click &apos;Reset Layout&apos; to restore defaults.
         </div>
       )}
 

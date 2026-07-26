@@ -55,13 +55,28 @@ describe('UI Store', () => {
     expect(useUIStore.getState().backLayout.col1).not.toContain(initialCol1First);
   });
 
-  it('should reset layouts back to default', () => {
+  it('should set module column span and custom height', () => {
+    useUIStore.getState().setModuleSpan('background', 2);
+    useUIStore.getState().setModuleHeight('background', 450);
+
+    expect(useUIStore.getState().moduleSpans['background']).toBe(2);
+    expect(useUIStore.getState().moduleHeights['background']).toBe(450);
+  });
+
+  it('should reset layouts and module sizes back to default', () => {
     useUIStore.getState().moveFrontModule('col1', 0, 'col2', 0);
     useUIStore.getState().moveBackModule('col1', 0, 'col2', 0);
+    useUIStore.getState().setModuleSpan('background', 3);
+    useUIStore.getState().setModuleHeight('background', 500);
 
     useUIStore.getState().resetLayouts();
 
     expect(useUIStore.getState().frontLayout).toEqual(DEFAULT_FRONT_LAYOUT);
     expect(useUIStore.getState().backLayout).toEqual(DEFAULT_BACK_LAYOUT);
+    expect(useUIStore.getState().moduleSpans).toEqual({
+      weapons: 3,
+      session_log: 3,
+    });
+    expect(useUIStore.getState().moduleHeights).toEqual({});
   });
 });
